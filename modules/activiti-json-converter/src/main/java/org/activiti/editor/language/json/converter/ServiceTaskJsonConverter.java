@@ -23,6 +23,7 @@ import org.activiti.editor.language.json.model.ModelInfo;
 import org.apache.commons.lang3.StringUtils;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 
 /**
@@ -86,7 +87,53 @@ public class ServiceTaskJsonConverter extends BaseBpmnJsonConverter implements D
           decisionReferenceNode.put("key", modelInfo.getKey());
         }
       }
-
+		} else if (ImplementationType.IMPLEMENTATION_TYPE_CLASS.equals(serviceTask.getImplementationType()) && "br.com.claninfo.wf.BoMethod".equals(serviceTask.getImplementation())) { //$NON-NLS-1$
+			String modul = null;
+			String bo = null;
+			String method = null;
+			for (FieldExtension extension : serviceTask.getFieldExtensions()) {
+				if ("modul".equals(extension.getFieldName())) { //$NON-NLS-1$
+					modul = extension.getStringValue();
+				} else if ("bo".equals(extension.getFieldName())) { //$NON-NLS-1$
+					bo = extension.getStringValue();
+				} else if ("method".equals(extension.getFieldName())) { //$NON-NLS-1$
+					method = extension.getStringValue();
+				} else if ("lsName".equals(extension.getFieldName())) { //$NON-NLS-1$
+					propertiesNode.put("clanlsname", extension.getStringValue()); //$NON-NLS-1$
+				} else if ("xoReport".equals(extension.getFieldName())) { //$NON-NLS-1$
+					propertiesNode.put("clanxoname", extension.getStringValue()); //$NON-NLS-1$
+				} else if ("commitBefore".equals(extension.getFieldName())) { //$NON-NLS-1$
+					propertiesNode.put("clancommitbefore", extension.getStringValue()); //$NON-NLS-1$
+				} else if ("inParamMapping".equals(extension.getFieldName()) && extension.getStringValue() != null && !extension.getStringValue().isEmpty()) { //$NON-NLS-1$
+					ObjectNode fieldExtensionsNode = objectMapper.createObjectNode();
+					ArrayNode itemsNode = objectMapper.createArrayNode();
+					String text = extension.getStringValue();
+					int start = 0;
+					int end = text.indexOf('=');
+					while (end > 0) {
+						ObjectNode propertyItemNode = objectMapper.createObjectNode();
+						propertyItemNode.put(PROPERTY_SERVICETASK_FIELD_NAME, text.substring(start, end));
+						start = end + 1;
+						if (text.charAt(start) == '$') {
+							end = text.indexOf("};", start) + 1; //$NON-NLS-1$
+							propertyItemNode.put(PROPERTY_SERVICETASK_FIELD_EXPRESSION, text.substring(start, end));
+						} else {
+							end = text.indexOf(';', start);
+							propertyItemNode.put(PROPERTY_SERVICETASK_FIELD_STRING_VALUE, text.substring(start, end));
+						}
+						itemsNode.add(propertyItemNode);
+						start = end + 1;
+						end = text.indexOf('=', start);
+					}
+					fieldExtensionsNode.set("fields", itemsNode); //$NON-NLS-1$
+					propertiesNode.set("servicetaskfields", fieldExtensionsNode); //$NON-NLS-1$
+				} else if ("outParamNames".equals(extension.getFieldName())) { //$NON-NLS-1$
+					propertiesNode.put(PROPERTY_SERVICETASK_RESULT_VARIABLE, extension.getStringValue());
+				}
+			}
+			if (bo != null) {
+				propertiesNode.put("clantaskmethod", modul + '.' + bo + '/' + method); //$NON-NLS-1$
+			}
     } else {
 
       if (ImplementationType.IMPLEMENTATION_TYPE_CLASS.equals(serviceTask.getImplementationType())) {

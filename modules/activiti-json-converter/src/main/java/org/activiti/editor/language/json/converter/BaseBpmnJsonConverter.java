@@ -36,6 +36,7 @@ import org.activiti.bpmn.model.FormProperty;
 import org.activiti.bpmn.model.FormValue;
 import org.activiti.bpmn.model.Gateway;
 import org.activiti.bpmn.model.GraphicInfo;
+import org.activiti.bpmn.model.ImplementationType;
 import org.activiti.bpmn.model.Lane;
 import org.activiti.bpmn.model.MessageEventDefinition;
 import org.activiti.bpmn.model.MessageFlow;
@@ -99,6 +100,8 @@ public abstract class BaseBpmnJsonConverter implements EditorJsonConstants, Sten
         stencilId = STENCIL_TASK_MULE;
       } else if ("dmn".equalsIgnoreCase(serviceTask.getType())) {
         stencilId = STENCIL_TASK_DECISION;
+			} else if (ImplementationType.IMPLEMENTATION_TYPE_CLASS.equals(serviceTask.getImplementationType()) && "br.com.claninfo.wf.BoMethod".equals(serviceTask.getImplementation())) {
+				stencilId = "ClanTask";
       } else {
         stencilId = getStencilId(baseElement);
       }
