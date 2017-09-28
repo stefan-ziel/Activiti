@@ -514,6 +514,27 @@ public class BpmnJsonConverter implements EditorJsonConstants, StencilConstants,
         }
       }
     }
+    
+   	// Error Definitions exist on the root level 
+    JsonNode errorDefinitionNode = BpmnJsonConverterUtil.getProperty("errordefinitions", modelNode);
+    errorDefinitionNode = BpmnJsonConverterUtil.validateIfNodeIsTextual(errorDefinitionNode);
+    // no idea why this needs to be done twice ..
+    errorDefinitionNode = BpmnJsonConverterUtil.validateIfNodeIsTextual(errorDefinitionNode);
+    if (errorDefinitionNode != null) {
+      if (errorDefinitionNode instanceof ArrayNode) {
+        ArrayNode errorDefinitionArrayNode = (ArrayNode) errorDefinitionNode;
+        Iterator<JsonNode> errorDefinitionIterator = errorDefinitionArrayNode.iterator();
+        while (errorDefinitionIterator.hasNext()) {
+          JsonNode errorDefinitionJsonNode = errorDefinitionIterator.next();
+          String errorId = errorDefinitionJsonNode.get(PROPERTY_SIGNAL_DEFINITION_ID).asText();
+          String errorName = errorDefinitionJsonNode.get(PROPERTY_SIGNAL_DEFINITION_NAME).asText();
+
+          if (StringUtils.isNotEmpty(errorId) && StringUtils.isNotEmpty(errorName)) {
+            bpmnModel.addError(errorId, errorName);
+          }
+        }
+      }
+    }
 
     if (nonEmptyPoolFound == false) {
       Process process = new Process();
