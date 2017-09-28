@@ -1274,4 +1274,21 @@
 		<connection>scm:git:git@github.com:Activiti/Activiti.git</connection>
 		<developerConnection>scm:git:git@github.com:Activiti/Activiti.git</developerConnection>
 	</scm>
+	<distributionManagement>
+		<repository>
+			<id>internal.release.upload</id>
+			<name>Internes Repository fuer RELEASES</name>
+			<url>dav://subversion/corprepos/release</url>
+		</repository>
+		<snapshotRepository>
+			<id>internal.snapshot.upload</id>
+			<name>Internes Repository fuer SNAPSHOTS</name>
+			<url>dav://subversion/corprepos/snapshot</url>
+		</snapshotRepository>
+		<site>
+			<id>site</id>
+			<name>Interne Webseite für Site Reports</name>
+			<url>dav://subversion/corprepos/site/${project.version}/claninfo/clan-ng/</url>
+		</site>
+	</distributionManagement>
 </project>
