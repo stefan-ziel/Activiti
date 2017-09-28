@@ -86,6 +86,14 @@ KISBPM.PROPERTY_CONFIG =
         "readModeTemplateUrl": "editor-app/configuration/properties/default-value-display-template.html",
         "writeModeTemplateUrl": "editor-app/configuration/properties/signal-property-write-template.html"
     },
+    "oryx-errordefinitions-multiplecomplex" : {
+      "readModeTemplateUrl": "editor-app/configuration/properties/error-definitions-display-template.html",
+      "writeModeTemplateUrl": "editor-app/configuration/properties/error-definitions-write-template.html"
+    },
+    "oryx-errorref-string" : {
+      "readModeTemplateUrl": "editor-app/configuration/properties/default-value-display-template.html",
+      "writeModeTemplateUrl": "editor-app/configuration/properties/error-property-write-template.html"
+    },
     "oryx-messagedefinitions-multiplecomplex" : {
         "readModeTemplateUrl": "editor-app/configuration/properties/message-definitions-display-template.html",
         "writeModeTemplateUrl": "editor-app/configuration/properties/message-definitions-write-template.html"

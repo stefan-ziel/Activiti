@@ -1259,6 +1259,10 @@
                 "TITLE": "Endpoint url",
                 "DESCRIPTION": "A required endpoint url to sent the message to Mule."
             },
+            "ERROR-DEFINITIONS": {
+                "TITLE": "Error definitions",
+                "DESCRIPTION": "Definitions of errors that are used in error catch and throw events in the process."
+            },
             "ERROR-REF": {
                 "TITLE": "Error reference",
                 "DESCRIPTION": "Define the error name."
@@ -1739,6 +1743,15 @@
     "PROPERTY.EVENTLISTENERS.SIGNALNAME" : "Signal name",
     "PROPERTY.EVENTLISTENERS.SIGNALNAME.PLACEHOLDER" : "Enter a signal name",
     "PROPERTY.EVENTLISTENERS.UNSELECTED" : "No event listener selected",
+
+    "PROPERTY.ERRORDEFINITIONS.DISPLAY" : "{{length}} error definitions",
+    "PROPERTY.ERRORDEFINITIONS.EMPTY" : "No error definitions configured",
+    "PROPERTY.ERRORDEFINITIONS.SCOPE-GLOBAL": "Global",
+    "PROPERTY.ERRORDEFINITIONS.SCOPE-PROCESSINSTANCE": "Process Instance",
+    "PROPERTY.ERRORDEFINITIONS.ID" : "Id",
+    "PROPERTY.ERRORDEFINITIONS.NAME" : "Name",
+    "PROPERTY.ERRORDEFINITIONS.SCOPE" : "Scope",
+
 
     "PROPERTY.SIGNALDEFINITIONS.DISPLAY" : "{{length}} signal definitions",
     "PROPERTY.SIGNALDEFINITIONS.EMPTY" : "No signal definitions configured",
