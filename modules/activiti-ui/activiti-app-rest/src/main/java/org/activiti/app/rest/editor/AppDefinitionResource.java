@@ -97,7 +97,7 @@ public class AppDefinitionResource {
     model = modelService.saveModel(model, editorJson, null, false, null, user);
 
     if (updatedModel.isPublish()) {
-      return appDefinitionImportService.publishAppDefinition(modelId, new AppDefinitionPublishRepresentation(null, updatedModel.getForce()));
+      return appDefinitionImportService.publishAppDefinition(modelId, new AppDefinitionPublishRepresentation(updatedModel.getComment(), updatedModel.getForce()));
     } else {
       AppDefinitionRepresentation appDefinition = new AppDefinitionRepresentation(model);
       appDefinition.setDefinition(updatedModel.getAppDefinition().getDefinition());

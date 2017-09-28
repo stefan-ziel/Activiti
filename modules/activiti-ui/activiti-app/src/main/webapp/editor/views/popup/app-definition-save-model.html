@@ -31,7 +31,10 @@
                             {{'APP.POPUP.PUBLISH-FIELD' | translate}}
                     </label>
                 </div>
-                
+				<div class="form-group" ng-if="saveDialog.publish">
+					<label for="commentTextArea">{{'MODEL.SAVE.COMMENT' | translate}}</label>
+					<textarea id="commentTextArea" class="form-control" ng-model="saveDialog.comment" ng-disabled="status.loading"></textarea>
+				</div>
                 <div ng-if="error && (error.hasCustomStencilItem || error.hasValidationErrors) && !status.loading" class="alert error" style="font-size: 14px; margin-top:20px">
                     <div class="popup-error" style="font-size: 14px">
                         <span class="glyphicon glyphicon-remove-circle"></span>

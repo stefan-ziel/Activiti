@@ -17,6 +17,7 @@ import org.activiti.app.model.common.AbstractRepresentation;
 public class AppDefinitionSaveRepresentation extends AbstractRepresentation {
 
   protected AppDefinitionRepresentation appDefinition;
+  protected String comment;
   protected boolean publish;
   protected Boolean force;
 
@@ -42,5 +43,13 @@ public class AppDefinitionSaveRepresentation extends AbstractRepresentation {
 
   public void setForce(Boolean force) {
     this.force = force;
+  }
+  
+  public String getComment() {
+    return comment;
+  }
+
+  public void setComment(String comment) {
+    this.comment = comment;
   }
 }
