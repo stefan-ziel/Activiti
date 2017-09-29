@@ -59,9 +59,6 @@ public class ModelResource extends AbstractModelResource {
   protected ModelService modelService;
   
   @Autowired
-  protected ModelRepository modelRepository;
-  
-  @Autowired
   protected ObjectMapper objectMapper;
 
   protected BpmnJsonConverter bpmnJsonConverter = new BpmnJsonConverter();
@@ -99,7 +96,7 @@ public class ModelResource extends AbstractModelResource {
 
     try {
       updatedModel.updateModel(model);
-      modelRepository.save(model);
+      modelService.saveModel(model);
       
       ModelRepresentation result = new ModelRepresentation(model);
       return result;

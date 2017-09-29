@@ -23,24 +23,27 @@ import org.activiti.app.model.editor.ModelRepresentation;
 import org.activiti.app.model.editor.ReviveModelResultRepresentation;
 import org.activiti.bpmn.model.BpmnModel;
 import org.activiti.engine.identity.User;
+import org.springframework.data.domain.Sort;
 
 public interface ModelService {
 
   Model getModel(String modelId);
 
-  List<AbstractModel> getModelsByModelType(Integer modelType);
+  List<Model> getModelsByModelType(Integer modelType);
+
+  List<Model> getModelsByModelType(Integer modelType, String filter);
   
   ModelKeyRepresentation validateModelKey(Model model, Integer modelType, String key);
   
+  ModelHistory getModelHistory(String modelHistoryId);
+
   ModelHistory getModelHistory(String modelId, String modelHistoryId);
 
-  Long getModelCountForUser(User user, int modelTypeApp);
+  Long getModelCountForUser(User user, Integer modelType);
   
   BpmnModel getBpmnModel(AbstractModel model);
 
   byte[] getBpmnXML(BpmnModel bpmnMode);
-  
-  byte[] getBpmnXML(AbstractModel model);
   
   BpmnModel getBpmnModel(AbstractModel model, Map<String, Model> formMap, Map<String, Model> decisionTableMap);
 
@@ -62,4 +65,13 @@ public interface ModelService {
   void deleteModel(String modelId, boolean cascadeHistory, boolean deleteRuntimeApp);
 
   ReviveModelResultRepresentation reviveProcessModelHistory(ModelHistory modelHistory, User user, String newVersionComment);
+  
+  List<Model> getReferencedModels(String modelId);
+
+  List<Model> getModelsForUser(User user, Integer modelType);
+
+  List<Model> getModelsForUser(User user, Integer modelType, String filter, Sort sort);
+  
+  List<ModelHistory> getModelHistoryForUser(User user, Integer modelType );
+
 }

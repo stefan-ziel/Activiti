@@ -71,9 +71,6 @@ public class DeploymentServiceImpl implements DeploymentService {
   protected RepositoryService repositoryService;
   
   @Autowired
-  protected ModelRepository modelRepository;
-
-  @Autowired
   protected ObjectMapper objectMapper;
   
   protected DmnJsonConverter dmnJsonConverter = new DmnJsonConverter();
@@ -101,7 +98,7 @@ public class DeploymentServiceImpl implements DeploymentService {
           throw new BadRequestException("Model for app definition could not be found");
         }
         
-        List<Model> referencedModels = modelRepository.findModelsByParentModelId(processModel.getId());
+        List<Model> referencedModels = modelService.getReferencedModels(processModel.getId());
         for (Model childModel : referencedModels) {
           if (Model.MODEL_TYPE_FORM == childModel.getModelType()) {
             formMap.put(childModel.getId(), childModel);

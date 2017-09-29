@@ -25,6 +25,7 @@ import org.activiti.app.domain.editor.Model;
 import org.activiti.app.model.common.ResultListDataRepresentation;
 import org.activiti.app.model.editor.form.FormRepresentation;
 import org.activiti.app.repository.editor.ModelRepository;
+import org.activiti.app.service.api.ModelService;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.http.NameValuePair;
 import org.apache.http.client.utils.URLEncodedUtils;
@@ -49,7 +50,7 @@ public class FormsResource {
   private static final int MIN_FILTER_LENGTH = 2;
   
   @Autowired
-  protected ModelRepository modelRepository;
+  protected ModelService modelService;
 
   @Autowired
   protected ObjectMapper objectMapper;
@@ -71,10 +72,10 @@ public class FormsResource {
 
     List<Model> models = null;
     if (validFilter != null) {
-      models = modelRepository.findModelsByModelType(AbstractModel.MODEL_TYPE_FORM, validFilter);
+      models = modelService.getModelsByModelType(AbstractModel.MODEL_TYPE_FORM, validFilter);
 
     } else {
-      models = modelRepository.findModelsByModelType(AbstractModel.MODEL_TYPE_FORM);
+      models = modelService.getModelsByModelType(AbstractModel.MODEL_TYPE_FORM);
     }
 
     List<FormRepresentation> reps = new ArrayList<FormRepresentation>();

@@ -50,9 +50,6 @@ public class AppDefinitionImportService {
   protected ModelService modelService;
   
   @Autowired
-  protected ModelRepository modelRepository;
-
-  @Autowired
   protected ObjectMapper objectMapper;
   
   protected BpmnJsonConverter bpmnJsonConverter = new BpmnJsonConverter();
@@ -86,7 +83,7 @@ public class AppDefinitionImportService {
         for (AppModelDefinition modelDef : appDefinition.getDefinition().getModels()) {
           Model processModel = modelService.getModel(modelDef.getId());
           
-          List<Model> referencedModels = modelRepository.findModelsByParentModelId(processModel.getId());
+          List<Model> referencedModels = modelService.getReferencedModels(processModel.getId());
           for (Model childModel : referencedModels) {
             if (Model.MODEL_TYPE_FORM == childModel.getModelType()) {
               existingFormModelMap.put(childModel.getKey(), childModel);
@@ -258,7 +255,7 @@ public class AppDefinitionImportService {
 
         if (thumbnailMap.containsKey(formKey)) {
           updatedFormModel.setThumbnail(thumbnailMap.get(formKey));
-          modelRepository.save(updatedFormModel);
+          modelService.saveModel(updatedFormModel);
         }
       }
 
@@ -298,7 +295,7 @@ public class AppDefinitionImportService {
         
         if (thumbnailMap.containsKey(decisionTableKey)) {
           updatedDecisionTableModel.setThumbnail(thumbnailMap.get(decisionTableKey));
-          modelRepository.save(updatedDecisionTableModel);
+          modelService.saveModel(updatedDecisionTableModel);
         }
       }
 
