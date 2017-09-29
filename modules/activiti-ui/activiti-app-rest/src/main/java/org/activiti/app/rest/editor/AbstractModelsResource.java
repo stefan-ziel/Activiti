@@ -66,9 +66,6 @@ public class AbstractModelsResource {
   private final Logger logger = LoggerFactory.getLogger(AbstractModelsResource.class);
 
   @Inject
-  protected ModelRepository modelRepository;
-
-  @Inject
   protected ModelService modelService;
 
   @Inject
@@ -97,12 +94,7 @@ public class AbstractModelsResource {
 
     User user = SecurityUtils.getCurrentUserObject();
 
-    if (validFilter != null) {
-      models = modelRepository.findModelsCreatedBy(user.getId(), modelType, validFilter, getSort(sort, false));
-
-    } else {
-      models = modelRepository.findModelsCreatedBy(user.getId(), modelType, getSort(sort, false));
-    }
+    models = modelService.getModelsForUser(user, modelType, validFilter, getSort(sort, false));
 
     if (CollectionUtils.isNotEmpty(models)) {
       List<String> addedModelIds = new ArrayList<String>();
@@ -127,7 +119,7 @@ public class AbstractModelsResource {
 
     List<String> addedModelIds = new ArrayList<String>();
 
-    List<Model> models = modelRepository.findModelsCreatedBy(user.getId(), 0, getSort(null, false));
+    List<Model> models =  modelService.getModelsForUser(user, 0, null, getSort(null, false));
 
     if (CollectionUtils.isNotEmpty(models)) {
       for (Model model : models) {

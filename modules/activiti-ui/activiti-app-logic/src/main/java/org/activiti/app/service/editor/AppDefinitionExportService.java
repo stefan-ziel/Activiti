@@ -41,9 +41,6 @@ public class AppDefinitionExportService {
   protected ModelService modelService;
 
   @Autowired
-  protected ModelRepository modelRepository;
-
-  @Autowired
   protected ObjectMapper objectMapper;
   
   protected BpmnJsonConverter bpmnJsonConverter = new BpmnJsonConverter();
@@ -78,7 +75,7 @@ public class AppDefinitionExportService {
         for (AppModelDefinition modelDef : modelDefinitions) {
           Model model = modelService.getModel(modelDef.getId());
 
-          List<Model> referencedModels = modelRepository.findModelsByParentModelId(model.getId());
+          List<Model> referencedModels = modelService.getReferencedModels(model.getId());
           for (Model childModel : referencedModels) {
             if (Model.MODEL_TYPE_FORM == childModel.getModelType()) {
               formMap.put(childModel.getId(), childModel);

@@ -27,6 +27,7 @@ import org.activiti.app.repository.editor.ModelRepository;
 import org.activiti.app.security.SecurityUtils;
 import org.activiti.app.service.api.AppDefinitionService;
 import org.activiti.app.service.api.AppDefinitionServiceRepresentation;
+import org.activiti.app.service.api.ModelService;
 import org.activiti.app.service.exception.InternalServerErrorException;
 import org.activiti.editor.language.json.converter.util.CollectionUtils;
 import org.activiti.engine.identity.User;
@@ -47,10 +48,7 @@ public class AppDefinitionServiceImpl implements AppDefinitionService {
   private final Logger logger = LoggerFactory.getLogger(AppDefinitionServiceImpl.class);
 
   @Autowired
-  protected ModelRepository modelRepository;
-
-  @Autowired
-  protected ModelHistoryRepository modelHistoryRepository;
+  protected ModelService modelService;
 
   @Autowired
   protected ObjectMapper objectMapper;
@@ -61,7 +59,7 @@ public class AppDefinitionServiceImpl implements AppDefinitionService {
     List<AppDefinitionServiceRepresentation> resultList = new ArrayList<AppDefinitionServiceRepresentation>();
 
     User user = SecurityUtils.getCurrentUserObject();
-    List<Model> createdByModels = modelRepository.findModelsCreatedBy(user.getId(), AbstractModel.MODEL_TYPE_APP, new Sort(Direction.ASC, "name"));
+    List<Model> createdByModels = modelService.getModelsForUser(user, AbstractModel.MODEL_TYPE_APP);
     for (Model model : createdByModels) {
       modelMap.put(model.getId(), model);
     }
@@ -84,7 +82,7 @@ public class AppDefinitionServiceImpl implements AppDefinitionService {
     Map<String, ModelHistory> modelMap = new HashMap<String, ModelHistory>();
     List<AppDefinitionServiceRepresentation> resultList = new ArrayList<AppDefinitionServiceRepresentation>();
 
-    List<ModelHistory> createdByModels = modelHistoryRepository.findByCreatedByAndModelTypeAndRemovalDateIsNull(user.getId(), AbstractModel.MODEL_TYPE_APP);
+    List<ModelHistory> createdByModels = modelService.getModelHistoryForUser(user, AbstractModel.MODEL_TYPE_APP);
     for (ModelHistory modelHistory : createdByModels) {
       if (modelMap.containsKey(modelHistory.getModelId())) {
         if (modelHistory.getVersion() > modelMap.get(modelHistory.getModelId()).getVersion()) {
@@ -96,7 +94,7 @@ public class AppDefinitionServiceImpl implements AppDefinitionService {
     }
 
     for (ModelHistory model : modelMap.values()) {
-      Model latestModel = modelRepository.findOne(model.getModelId());
+      Model latestModel = modelService.getModel(model.getModelId());
       if (latestModel != null) {
         resultList.add(createAppDefinition(model));
       }
@@ -139,12 +137,4 @@ public class AppDefinitionServiceImpl implements AppDefinitionService {
     }
     return resultInfo;
   }
-  
-  
-  @Override
-  public String getDefinitionIdForModelAndUser(String modelId, User user) {
-	String appDefinitionId = this.modelRepository.appDefinitionIdByModelAndUser(modelId, user.getId());
-	return appDefinitionId;
-  }
-
 }

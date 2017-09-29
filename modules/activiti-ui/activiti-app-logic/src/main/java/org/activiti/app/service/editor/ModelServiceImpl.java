@@ -36,10 +36,8 @@ import org.activiti.app.repository.editor.ModelHistoryRepository;
 import org.activiti.app.repository.editor.ModelRelationRepository;
 import org.activiti.app.repository.editor.ModelRepository;
 import org.activiti.app.security.SecurityUtils;
-import org.activiti.app.service.api.AppDefinitionService;
 import org.activiti.app.service.api.DeploymentService;
 import org.activiti.app.service.api.ModelService;
-import org.activiti.app.service.api.UserCache;
 import org.activiti.app.service.exception.InternalServerErrorException;
 import org.activiti.app.service.exception.NotFoundException;
 import org.activiti.bpmn.converter.BpmnXMLConverter;
@@ -55,6 +53,8 @@ import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.domain.Sort.Direction;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -89,12 +89,6 @@ public class ModelServiceImpl implements ModelService {
   @Autowired
   protected ObjectMapper objectMapper;
 
-  @Autowired
-  protected UserCache userCache;
-  
-  @Autowired
-  protected AppDefinitionService appDefinitionService;
-
   protected BpmnJsonConverter bpmnJsonConverter = new BpmnJsonConverter();
 
   protected BpmnXMLConverter bpmnXMLConverter = new BpmnXMLConverter();
@@ -113,27 +107,46 @@ public class ModelServiceImpl implements ModelService {
   }
 
   @Override
-  public List<AbstractModel> getModelsByModelType(Integer modelType) {
-    return new ArrayList<AbstractModel>(modelRepository.findModelsByModelType(modelType));
+  public List<Model> getModelsByModelType(Integer modelType){
+    return new ArrayList<Model>(modelRepository.findModelsByModelType(modelType));
   }
-  
-  @Override
-  public ModelHistory getModelHistory(String modelId, String modelHistoryId) {
-    // Check if the user has read-rights on the process-model in order to fetch history
-    Model model = getModel(modelId);
-    ModelHistory modelHistory = modelHistoryRepository.findOne(modelHistoryId);
 
+  @Override
+  public List<Model> getModelsByModelType(Integer modelType,String filter){
+    return new ArrayList<Model>(modelRepository.findModelsByModelType(modelType,filter));
+  }
+
+  @Override
+  public List<Model> getReferencedModels(String modelId) {
+    return modelRepository.findModelsByParentModelId(modelId);
+  }
+
+  @Override
+  public ModelHistory getModelHistory(String modelHistoryId) {
+    ModelHistory modelHistory = modelHistoryRepository.findOne(modelHistoryId);
     // Check if history corresponds to the current model and is not deleted
-    if (modelHistory == null || modelHistory.getRemovalDate() != null || !modelHistory.getModelId().equals(model.getId())) {
+    if (modelHistory == null || modelHistory.getRemovalDate() != null) {
       throw new NotFoundException("Process model history not found: " + modelHistoryId);
     }
     return modelHistory;
   }
 
   @Override
-  public byte[] getBpmnXML(AbstractModel model) {
-    BpmnModel bpmnModel = getBpmnModel(model);
-    return getBpmnXML(bpmnModel);
+  public ModelHistory getModelHistory(String modelId, String modelHistoryId) {
+    // Check if the user has read-rights on the process-model in order to fetch history
+    Model model = getModel(modelId);
+    ModelHistory modelHistory = getModelHistory(modelHistoryId);
+
+    // Check if history corresponds to the current model and is not deleted
+    if (!modelHistory.getModelId().equals(model.getId())) {
+      throw new NotFoundException("Process model history not for this model " + modelHistoryId);
+    }
+    return modelHistory;
+  }
+  
+  @Override
+  public List<ModelHistory> getModelHistoryForUser(User user, Integer modelType){
+  	return modelHistoryRepository.findByCreatedByAndModelTypeAndRemovalDateIsNull(user.getId(), modelType);
   }
 
   @Override
@@ -151,6 +164,7 @@ public class ModelServiceImpl implements ModelService {
     return xmlBytes;
   }
   
+  @Override
   public ModelKeyRepresentation validateModelKey(Model model, Integer modelType, String key) {
     ModelKeyRepresentation modelKeyResponse = new ModelKeyRepresentation();
     modelKeyResponse.setKey(key);
@@ -300,11 +314,10 @@ public class ModelServiceImpl implements ModelService {
 
     // if the model is an app definition and the runtime app needs to be deleted, remove it now
     if (deleteRuntimeApp && model.getModelType() == Model.MODEL_TYPE_APP) {
-   	 String appDefinitionId = appDefinitionService.getDefinitionIdForModelAndUser(model.getId(), SecurityUtils.getCurrentUserObject());
+    	String appDefinitionId = modelRepository.appDefinitionIdByModelAndUser(modelId, SecurityUtils.getCurrentUserObject().getId());
       if (appDefinitionId != null) {
         deploymentService.deleteAppDefinition(appDefinitionId);
       }
-
     } else {
       // Move model to history and mark removed
       ModelHistory historyModel = createNewModelhistory(model);
@@ -398,7 +411,7 @@ public class ModelServiceImpl implements ModelService {
       Map<String, Model> formMap = new HashMap<String, Model>();
       Map<String, Model> decisionTableMap = new HashMap<String, Model>();
       
-      List<Model> referencedModels = modelRepository.findModelsByParentModelId(model.getId());
+      List<Model> referencedModels = getReferencedModels(model.getId());
       for (Model childModel : referencedModels) {
         if (Model.MODEL_TYPE_FORM == childModel.getModelType()) {
           formMap.put(childModel.getId(), childModel);
@@ -460,10 +473,25 @@ public class ModelServiceImpl implements ModelService {
     }
   }
 
-  public Long getModelCountForUser(User user, int modelType) {
+  @Override
+  public Long getModelCountForUser(User user, Integer modelType) {
     return modelRepository.countByModelTypeAndUser(modelType, user.getId());
   }
+  
+  @Override
+  public List<Model> getModelsForUser(User user, Integer modelType){
+    return getModelsForUser(user, modelType, null, new Sort(Direction.ASC, "name")); //$NON-NLS-1$
+  }
 
+  @Override
+  public List<Model> getModelsForUser(User user, Integer modelType, String filter, Sort sort){
+    if(filter == null){
+      return modelRepository.findModelsCreatedBy(user.getId(), modelType, sort);
+    }
+    return modelRepository.findModelsCreatedBy(user.getId(), modelType, filter, sort);
+  }
+
+  
   protected Model persistModel(Model model) {
 
     model = modelRepository.save((Model) model);
@@ -595,4 +623,5 @@ public class ModelServiceImpl implements ModelService {
     model.setVersion(basedOn.getVersion());
     model.setComment(basedOn.getComment());
   }
+
 }
