@@ -38,6 +38,8 @@ public interface ModelService {
   ModelHistory getModelHistory(String modelHistoryId);
 
   ModelHistory getModelHistory(String modelId, String modelHistoryId);
+  
+  List<ModelHistory> getModelHistory(Model pModel);
 
   Long getModelCountForUser(User user, Integer modelType);
   

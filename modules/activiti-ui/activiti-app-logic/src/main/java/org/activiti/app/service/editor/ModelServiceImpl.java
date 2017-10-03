@@ -65,7 +65,8 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 @Service
 public class ModelServiceImpl implements ModelService {
 
-  private final Logger log = LoggerFactory.getLogger(ModelServiceImpl.class);
+
+	private final Logger log = LoggerFactory.getLogger(ModelServiceImpl.class);
 
   public static final String NAMESPACE = "http://activiti.com/modeler";
   
@@ -129,6 +130,11 @@ public class ModelServiceImpl implements ModelService {
       throw new NotFoundException("Process model history not found: " + modelHistoryId);
     }
     return modelHistory;
+  }
+  
+  @Override
+  public List<ModelHistory> getModelHistory(Model model) {
+    return modelHistoryRepository.findByModelIdAndRemovalDateIsNullOrderByVersionDesc(model.getId());
   }
 
   @Override
