@@ -33,15 +33,12 @@ public class AbstractModelHistoryResource {
   protected ModelService modelService;
   
   @Autowired
-  protected ModelHistoryRepository modelHistoryRepository;
-
-  @Autowired
   protected ObjectMapper objectMapper;
 
   public ResultListDataRepresentation getModelHistoryCollection(String modelId, Boolean includeLatestVersion) {
 
     Model model = modelService.getModel(modelId);
-    List<ModelHistory> history = modelHistoryRepository.findByModelIdAndRemovalDateIsNullOrderByVersionDesc(model.getId());
+    List<ModelHistory> history = modelService.getModelHistory(model);
     ResultListDataRepresentation result = new ResultListDataRepresentation();
 
     List<ModelRepresentation> representations = new ArrayList<ModelRepresentation>();
