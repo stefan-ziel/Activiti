@@ -21,9 +21,13 @@ import org.activiti.app.domain.editor.AppDefinition;
 import org.activiti.app.domain.editor.AppModelDefinition;
 import org.activiti.app.domain.editor.Model;
 import org.activiti.app.domain.editor.ModelHistory;
+<<<<<<< HEAD
 import org.activiti.app.model.editor.ReviveModelResultRepresentation;
 import org.activiti.app.model.editor.ReviveModelResultRepresentation.UnresolveModelRepresentation;
 import org.activiti.app.security.SecurityUtils;
+=======
+import org.activiti.app.service.editor.FileSystemModelServiceImpl;
+>>>>>>> branch '6.x-c' of https://github.com/stefan-ziel/Activiti.git
 import org.activiti.app.service.exception.InternalServerErrorException;
 import org.activiti.engine.identity.User;
 import org.apache.commons.lang3.StringUtils;
@@ -53,10 +57,29 @@ public class SVNModelServiceImpl extends FileSystemModelServiceImpl {
 
 	@Override
 	public List<ModelHistory> getModelHistory(Model pModel) {
+		String log = null;
 		try {
+<<<<<<< HEAD
 			return svnLog(SecurityUtils.getCurrentUserObject(), pModel.getModelType(), pModel.getKey(), null);
+=======
+			List<ModelHistory> res = new ArrayList<>();
+			File file = getFile(pModel.getId());
+			log = svnExecute(null,"log", file, "-r", "PREV:0", "--xml"); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$ //$NON-NLS-4$
+			if (log != null && log.startsWith("<?xml")) { //$NON-NLS-1$
+				parse(log, new SVNLogHandler(pModel.getModelType(), pModel.getKey(), res));
+			}
+			return res;
+>>>>>>> branch '6.x-c' of https://github.com/stefan-ziel/Activiti.git
 		}
+<<<<<<< HEAD
 		catch (IOException e) {
+=======
+		catch (SAXException e) {
+			LOGGER.error("Invalid xml: " + log, e); //$NON-NLS-1$
+			throw new InternalServerErrorException("Invalid xml for " + pModel.getId(), e); //$NON-NLS-1$
+		}
+		catch (IOException | ParserConfigurationException e) {
+>>>>>>> branch '6.x-c' of https://github.com/stefan-ziel/Activiti.git
 			LOGGER.error("Could not list history for " + pModel.getId(), e); //$NON-NLS-1$
 			throw new InternalServerErrorException("Could not list history for " + pModel.getId(), e); //$NON-NLS-1$
 		}
@@ -75,7 +98,15 @@ public class SVNModelServiceImpl extends FileSystemModelServiceImpl {
 	@Override
 	public List<ModelHistory> getModelHistoryForUser(User pUser, Integer pModelType) {
 		try {
+<<<<<<< HEAD
 			return svnLog(pUser, pModelType, null, null);
+=======
+			List<ModelHistory> res = new ArrayList<>();
+			File dir = getTypeDir(pModelType);
+			String log = svnExecute(pUser, "log", dir, "-v", "--xml"); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
+			parse(log, new SVNLogHandler(pModelType, null, res));
+			return res;
+>>>>>>> branch '6.x-c' of https://github.com/stefan-ziel/Activiti.git
 		}
 		catch (IOException e) {
 			LOGGER.error("Could not list history for " + pModelType, e); //$NON-NLS-1$
@@ -84,6 +115,7 @@ public class SVNModelServiceImpl extends FileSystemModelServiceImpl {
 	}
 
 	@Override
+<<<<<<< HEAD
 	public ReviveModelResultRepresentation reviveProcessModelHistory(ModelHistory pModelHistory, User pUser, String pNewVersionComment) {
 		Model latestModel = getModel(pModelHistory.getModelId());
 		latestModel.setModelEditorJson(pModelHistory.getModelEditorJson());
@@ -133,6 +165,11 @@ public class SVNModelServiceImpl extends FileSystemModelServiceImpl {
 			LOGGER.error("XML problem", e); //$NON-NLS-1$
 		}
 		return super.getVersion(pFile);
+=======
+	protected void deleteFile(User pUser, File pFile, String pComment) throws IOException {
+		svnDelete(pFile);
+		svnCommit(pUser, pFile, pComment); 
+>>>>>>> branch '6.x-c' of https://github.com/stefan-ziel/Activiti.git
 	}
 
 	@Override
@@ -146,9 +183,17 @@ public class SVNModelServiceImpl extends FileSystemModelServiceImpl {
 					toCommit = file;
 				}
 				// Commit it
+<<<<<<< HEAD
 				svnCommit(pUpdatedBy, toCommit, pComment);
 				// and write it to the current
 				newModel = super.persistModel(newModel, false, pComment, pUpdatedBy);
+=======
+				svnCommit(pUpdatedBy,toCommit, pComment); 
+				// Read information of this new versison
+				svnInfo(file, newModel);
+				// and write it to the current 
+				newModel = super.persistModel(newModel, false, null, null);
+>>>>>>> branch '6.x-c' of https://github.com/stefan-ziel/Activiti.git
 			}
 			return newModel;
 		}
@@ -157,10 +202,17 @@ public class SVNModelServiceImpl extends FileSystemModelServiceImpl {
 			throw new InternalServerErrorException("Could not commit model file", e); //$NON-NLS-1$
 		}
 	}
+<<<<<<< HEAD
 
 	/**
 	 * @param pFile the file to add
 	 * @return a ancestor folder that was added or null if none
+=======
+	
+	/**
+	 * @param pFile the file to add
+	 * @return a ancestor folder that was added or null if none  
+>>>>>>> branch '6.x-c' of https://github.com/stefan-ziel/Activiti.git
 	 * @throws IOException
 	 */
 	protected File svnAdd(File pFile) throws IOException {
@@ -176,6 +228,7 @@ public class SVNModelServiceImpl extends FileSystemModelServiceImpl {
 	}
 
 	/**
+<<<<<<< HEAD
 	 * commit a file
 	 * 
 	 * @param pUser the user
@@ -185,10 +238,21 @@ public class SVNModelServiceImpl extends FileSystemModelServiceImpl {
 	 */
 	protected void svnCommit(User pUser, File pFile, String pComment) throws IOException {
 		svnExecute(pUser, "commit", pFile, "--message", pComment); //$NON-NLS-1$ //$NON-NLS-2$
+=======
+	 * commit a file 
+	 * @param pUser the user 
+	 * @param pFile the file
+	 * @param pComment a commit comment
+	 * @throws IOException 
+	 */
+	protected void svnCommit(User pUser, File pFile, String pComment) throws IOException {
+		svnExecute(pUser,"commit", pFile, "--message", pComment); //$NON-NLS-1$ //$NON-NLS-2$
+>>>>>>> branch '6.x-c' of https://github.com/stefan-ziel/Activiti.git
 	}
 
 	/**
 	 * delete a file from svn
+<<<<<<< HEAD
 	 * 
 	 * @param pFile the file
 	 * @throws IOException
@@ -205,6 +269,22 @@ public class SVNModelServiceImpl extends FileSystemModelServiceImpl {
 	 * @param pFile the path
 	 * @param pParams aditional params
 	 * @return console output
+=======
+	 * @param pFile the file 
+	 * @throws IOException
+	 */
+	protected void svnDelete(File pFile) throws IOException {
+		svnExecute(null, "delete", pFile); //$NON-NLS-1$
+	}
+
+	/**
+	 * execute a svn commandline and return the console output
+	 * @param pUser user for this operation. may be null
+	 * @param pCommand the svn-command
+	 * @param pFile the path
+	 * @param pParams aditional params 
+	 * @return console output 
+>>>>>>> branch '6.x-c' of https://github.com/stefan-ziel/Activiti.git
 	 * @throws IOException execution error
 	 */
 	protected String svnExecute(User pUser, String pCommand, File pFile, String... pParams) throws IOException {
@@ -222,6 +302,8 @@ public class SVNModelServiceImpl extends FileSystemModelServiceImpl {
 		if (LOGGER.isDebugEnabled()) {
 			LOGGER.debug(procBuilder.command().toString());
 		}
+<<<<<<< HEAD
+=======
 		try {
 			Process proc = procBuilder.start();
 			Piper outputBuffer = new Piper(proc.getInputStream());
@@ -233,7 +315,7 @@ public class SVNModelServiceImpl extends FileSystemModelServiceImpl {
 				while (errorBuffer.isAlive()) {
 					// busy waiting for a few millies just to be sure all bytes are read.
 				}
-				throw new IOException("External command failed with exit code " + exitCode + ':' + errorBuffer.toString()); //$NON-NLS-1$
+				throw new IOException("External command failed with exit code "+ exitCode+':' + errorBuffer.toString()); //$NON-NLS-1$
 			}
 			while (outputBuffer.isAlive()) {
 				// busy waiting for a few millies just to be sure all bytes are read.
@@ -249,6 +331,81 @@ public class SVNModelServiceImpl extends FileSystemModelServiceImpl {
 	}
 
 	/**
+	 * get version info into the model
+	 * @param pFile
+	 * @param pModel
+	 * @throws IOException
+	 */
+	protected void svnInfo(File pFile, Model pModel) throws IOException {
+		String log = null;
+>>>>>>> branch '6.x-c' of https://github.com/stefan-ziel/Activiti.git
+		try {
+<<<<<<< HEAD
+			Process proc = procBuilder.start();
+			Piper outputBuffer = new Piper(proc.getInputStream());
+			Piper errorBuffer = new Piper(proc.getErrorStream());
+			outputBuffer.start();
+			errorBuffer.start();
+			int exitCode = proc.waitFor();
+			if (exitCode != 0) {
+				while (errorBuffer.isAlive()) {
+					// busy waiting for a few millies just to be sure all bytes are read.
+				}
+				throw new IOException("External command failed with exit code " + exitCode + ':' + errorBuffer.toString()); //$NON-NLS-1$
+			}
+			while (outputBuffer.isAlive()) {
+				// busy waiting for a few millies just to be sure all bytes are read.
+=======
+			SVNLogHandler handler = new SVNLogHandler(null, null, null);
+			log = svnExecute(null, "info", pFile, "--xml"); //$NON-NLS-1$ //$NON-NLS-2$
+			if (log != null && log.startsWith("<?xml")) { //$NON-NLS-1$
+				parse(log, handler);
+				pModel.setLastUpdated(handler.time);
+				pModel.setLastUpdatedBy(handler.autor);
+				pModel.setVersion(handler.revision);
+				pModel.setComment(handler.comment);
+				if (pModel.getCreated() == null) {
+					pModel.setCreated(handler.time);
+				}
+				if (pModel.getCreatedBy() == null) {
+					pModel.setCreatedBy(handler.autor);
+				}
+			} else {
+				if (pModel.getLastUpdated() == null) {
+					pModel.setLastUpdated(new Date());
+				}
+				if (pModel.getLastUpdatedBy() == null) {
+					pModel.setLastUpdatedBy(Authentication.getAuthenticatedUserId());
+				}
+				if (pModel.getCreated() == null) {
+					pModel.setCreated(new Date());
+				}
+				if (pModel.getCreatedBy() == null) {
+					pModel.setCreatedBy(Authentication.getAuthenticatedUserId());
+				}
+>>>>>>> branch '6.x-c' of https://github.com/stefan-ziel/Activiti.git
+			}
+			String terminal = outputBuffer.toString();
+			LOGGER.debug(terminal);
+			return terminal;
+		}
+<<<<<<< HEAD
+		catch (InterruptedException irex) {
+			LOGGER.error(irex);
+			throw new IOException("External command interrupted"); //$NON-NLS-1$
+=======
+		catch (SAXException e) {
+			LOGGER.error("Invalid XML :" + log, e); //$NON-NLS-1$
+			throw new IOException(e);
+		}
+		catch (ParserConfigurationException e) {
+			throw new IOException(e);
+>>>>>>> branch '6.x-c' of https://github.com/stefan-ziel/Activiti.git
+		}
+	}
+
+	/**
+<<<<<<< HEAD
 	 * Do a svn log
 	 * 
 	 * @param pUser the user. may be null
@@ -278,6 +435,10 @@ public class SVNModelServiceImpl extends FileSystemModelServiceImpl {
 	 * get status info
 	 * 
 	 * @param pFile the file
+=======
+	 * get status info
+	 * @param pFile the file 
+>>>>>>> branch '6.x-c' of https://github.com/stefan-ziel/Activiti.git
 	 * @return
 	 * @throws IOException
 	 */
@@ -301,6 +462,7 @@ public class SVNModelServiceImpl extends FileSystemModelServiceImpl {
 	}
 
 	ModelHistory getHistory(String pHistoryId) {
+<<<<<<< HEAD
 
 		try {
 			String id = getModelId(pHistoryId);
@@ -345,6 +507,33 @@ public class SVNModelServiceImpl extends FileSystemModelServiceImpl {
 			LOGGER.error("Invalid XML: " + pXMLText, e); //$NON-NLS-1$
 			throw new IOException(e);
 		}
+=======
+		
+		try {
+			int pos = pHistoryId.lastIndexOf('-');
+			String id = pHistoryId.substring(0, pos) + '}';
+			String revision = pHistoryId.substring(pos + 1, pHistoryId.length() - 1);
+			String text = svnExecute(null, "cat", getFile(id), "-r", revision); //$NON-NLS-1$ //$NON-NLS-2$
+			Model model = loadModel(id, new StringReader(text));
+			return createNewModelhistory(model);
+		}
+		catch (IOException | ParseException e) {
+			LOGGER.error("Could not list history for " + pHistoryId, e); //$NON-NLS-1$
+			throw new InternalServerErrorException("Could not list history for " + pHistoryId, e); //$NON-NLS-1$
+		}
+
+	}
+
+	int getVersion(String pHistoryId) {
+		int pos = pHistoryId.lastIndexOf('-');
+		return Integer.parseInt(pHistoryId.substring(pos + 1, pHistoryId.length()));
+	}
+
+	void parse(String pXMLText, ContentHandler pHandler) throws SAXException, IOException, ParserConfigurationException {
+		XMLReader reader = parserFactory.newSAXParser().getXMLReader();
+		reader.setContentHandler(pHandler);
+		reader.parse(new InputSource(new StringReader(pXMLText)));
+>>>>>>> branch '6.x-c' of https://github.com/stefan-ziel/Activiti.git
 	}
 
 	class SVNLogHandler extends DefaultHandler {
@@ -355,12 +544,25 @@ public class SVNModelServiceImpl extends FileSystemModelServiceImpl {
 		SvnStat stat;
 		List<ModelHistory> res;
 		StringBuffer text;
+<<<<<<< HEAD
 		ModelHistory version;
+=======
+		SvnStat stat;
+		String autor;
+		String comment;
+		Date time;
+		int revision;
+		String key;
+>>>>>>> branch '6.x-c' of https://github.com/stefan-ziel/Activiti.git
 
 		public SVNLogHandler(Integer pType, String pKey, List<ModelHistory> pRes) {
 			super();
 			res = pRes;
+<<<<<<< HEAD
 			type = pType == null ? Integer.valueOf(AbstractModel.MODEL_TYPE_BPMN) : pType;
+=======
+			type = pType;
+>>>>>>> branch '6.x-c' of https://github.com/stefan-ziel/Activiti.git
 			key = pKey;
 		}
 
@@ -389,6 +591,7 @@ public class SVNModelServiceImpl extends FileSystemModelServiceImpl {
 					}
 					break;
 				case "path": //$NON-NLS-1$
+<<<<<<< HEAD
 					if (key == null) {
 						path = endText();
 						int pos = path.lastIndexOf('/');
@@ -400,15 +603,38 @@ public class SVNModelServiceImpl extends FileSystemModelServiceImpl {
 						} else {
 							path = null;
 						}
+=======
+					key = endText();
+					int pos = key.lastIndexOf('/');
+					if (pos >= 0) {
+						key = key.substring(pos + 1);
+					}
+					if (key.endsWith(EXTENSION)) {
+						key = key.substring(0, key.length() - EXTENSION.length());
+>>>>>>> branch '6.x-c' of https://github.com/stefan-ziel/Activiti.git
 					}
 					break;
 				case "logentry": //$NON-NLS-1$
+<<<<<<< HEAD
 					if (type != null && key != null && version != null) {
 						version.setId(getHistoryId(type, key, version.getVersion()));
 						version.setModelId(getId(type, key));
 						version.setModelType(type);
 						version.setKey(key);
 						res.add(version);
+=======
+					if (type != null && key != null && revision > 0) {
+						ModelHistory historyModel = new ModelHistory();
+						historyModel.setId(getHistoryId(type,key,revision));
+						historyModel.setModelId(getId(type,key));
+						historyModel.setKey(key);
+						historyModel.setLastUpdated(time);
+						historyModel.setLastUpdatedBy(autor);
+						historyModel.setModelType(type);
+						historyModel.setVersion(revision);
+						historyModel.setComment(comment);
+						res.add(historyModel);
+>>>>>>> branch '6.x-c' of https://github.com/stefan-ziel/Activiti.git
 					}
 					break;
 			}
@@ -419,9 +645,16 @@ public class SVNModelServiceImpl extends FileSystemModelServiceImpl {
 			switch (pQName) {
 				case "commit": //$NON-NLS-1$
 				case "logentry": //$NON-NLS-1$
+<<<<<<< HEAD
 					version = new ModelHistory();
 					version.setVersion(Integer.parseInt(pAttributes.getValue("revision"))); //$NON-NLS-1$
 					path = key;
+=======
+					revision = Integer.parseInt(pAttributes.getValue("revision")); //$NON-NLS-1$
+					comment = null;
+					autor = null;
+					time = null;
+>>>>>>> branch '6.x-c' of https://github.com/stefan-ziel/Activiti.git
 					break;
 				case "author": //$NON-NLS-1$
 				case "date": //$NON-NLS-1$
