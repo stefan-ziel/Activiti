@@ -111,17 +111,17 @@ public class ModelResource extends AbstractModelResource {
    */
   @ResponseStatus(value = HttpStatus.OK)
   @RequestMapping(value = "/rest/models/{modelId}", method = RequestMethod.DELETE)
-  public void deleteModel(@PathVariable String modelId, @RequestParam(required = false) Boolean cascade, @RequestParam(required = false) Boolean deleteRuntimeApp) {
+  public void deleteModel(@PathVariable String modelId, @RequestParam(required = false) Boolean cascade, @RequestParam(required = false) Boolean deleteRuntimeApp, @RequestParam(required = false) String comment) {
 
     // Get model to check if it exists, read-permission required for delete (in case user is not owner, only share info
     // will be deleted
     Model model = modelService.getModel(modelId);
 
     try {
-      String currentUserId = SecurityUtils.getCurrentUserId();
-      boolean currentUserIsOwner = currentUserId.equals(model.getCreatedBy());
+      User currentUser = SecurityUtils.getCurrentUserObject();
+      boolean currentUserIsOwner = currentUser.getId().equals(model.getCreatedBy());
       if (currentUserIsOwner) {
-        modelService.deleteModel(model.getId(), Boolean.TRUE.equals(cascade), Boolean.TRUE.equals(deleteRuntimeApp));
+        modelService.deleteModel(model.getId(), Boolean.TRUE.equals(cascade), Boolean.TRUE.equals(deleteRuntimeApp), comment, currentUser);
       }
 
     } catch (Exception e) {

@@ -13,9 +13,12 @@
 package org.activiti.app.service.editor;
 
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.FilenameFilter;
 import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.Reader;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
@@ -124,14 +127,14 @@ public class FileSystemModelServiceImpl implements ModelService {
 	}
 
 	@Override
-	public void deleteModel(String pModelId, boolean pCascadeHistory, boolean pDeleteRuntimeApp) {
+	public void deleteModel(String pModelId, boolean pCascadeHistory, boolean pDeleteRuntimeApp, String pComment, User pDeletedBy) {
 		try {
 			// if the model is an app definition and the runtime app needs to be
 			// deleted, remove it now
 			if (pDeleteRuntimeApp && getModelType(pModelId) == AbstractModel.MODEL_TYPE_APP) {
 				deploymentService.deleteAppDefinition(getModelKey(pModelId));
 			}
-			deleteFile(getFile(pModelId));
+			deleteFile(pDeletedBy, getFile(pModelId), pComment);
 		}
 		catch (IOException e) {
 			throw new InternalServerErrorException("Could not delete model file"); //$NON-NLS-1$
@@ -372,10 +375,35 @@ public class FileSystemModelServiceImpl implements ModelService {
 	}
 
 	/**
+	 * a History entry for the current Model Version
+	 * @param model current Model
+	 * @return an equivalent History entry
+	 */
+	protected ModelHistory createNewModelhistory(Model model) {
+		ModelHistory historyModel = new ModelHistory();
+		historyModel.setName(model.getName());
+		historyModel.setKey(model.getKey());
+		historyModel.setDescription(model.getDescription());
+		historyModel.setCreated(model.getCreated());
+		historyModel.setLastUpdated(model.getLastUpdated());
+		historyModel.setCreatedBy(model.getCreatedBy());
+		historyModel.setLastUpdatedBy(model.getLastUpdatedBy());
+		historyModel.setModelEditorJson(model.getModelEditorJson());
+		historyModel.setModelType(model.getModelType());
+		historyModel.setVersion(model.getVersion());
+		historyModel.setComment(model.getComment());
+		historyModel.setModelId(model.getId());
+		historyModel.setId(getHistoryId(model));
+		return historyModel;
+	}
+
+	/**
+	 * @param pUser User who deletes
 	 * @param pFile the file to delete
+	 * @param pComment Deletition comment
 	 * @throws IOException
 	 */
-	protected void deleteFile(File pFile) throws IOException {
+	protected void deleteFile(User pUser, File pFile, String pComment) throws IOException {
 		pFile.delete();
 	}
 
@@ -458,7 +486,7 @@ public class FileSystemModelServiceImpl implements ModelService {
 	 * @throws IOException
 	 * @throws ParseException
 	 */
-	protected Model loadModel(String pModelId, File pModelFile) throws IOException, ParseException {
+	protected Model loadModel(String pModelId, Reader pModelFile) throws IOException, ParseException {
 		ObjectNode modelNode = (ObjectNode) objectMapper.readTree(pModelFile);
 		Model newModel = new Model();
 		newModel.setId(pModelId);
@@ -534,24 +562,6 @@ public class FileSystemModelServiceImpl implements ModelService {
 		return pModel;
 	}
 
-	ModelHistory createNewModelhistory(Model model) {
-		ModelHistory historyModel = new ModelHistory();
-		historyModel.setName(model.getName());
-		historyModel.setKey(model.getKey());
-		historyModel.setDescription(model.getDescription());
-		historyModel.setCreated(model.getCreated());
-		historyModel.setLastUpdated(model.getLastUpdated());
-		historyModel.setCreatedBy(model.getCreatedBy());
-		historyModel.setLastUpdatedBy(model.getLastUpdatedBy());
-		historyModel.setModelEditorJson(model.getModelEditorJson());
-		historyModel.setModelType(model.getModelType());
-		historyModel.setVersion(model.getVersion());
-		historyModel.setComment(model.getComment());
-		historyModel.setModelId(model.getId());
-		historyModel.setId(getHistoryId(model));
-		return historyModel;
-	}
-
 	Date getDateValue(ObjectNode pJsonObject, String pName) throws ParseException {
 		JsonNode jn = pJsonObject.get(pName);
 		return jn == null ? null : JSON_DATE_FORMAT.parse(jn.textValue());
@@ -607,11 +617,11 @@ public class FileSystemModelServiceImpl implements ModelService {
 	}
 
 	Model loadModel(File pModelFile) throws IOException, ParseException {
-		return loadModel(getId(pModelFile), pModelFile);
+		return loadModel(getId(pModelFile), new InputStreamReader(new FileInputStream(pModelFile)));
 	}
 
 	Model loadModel(String pModelId) throws IOException, ParseException {
-		return loadModel(pModelId, getFile(pModelId));
+		return loadModel(pModelId, new InputStreamReader(new FileInputStream(getFile(pModelId))));
 	}
 
 	void putTextValue(ObjectNode pJsonObject, String pName, String pValue) {
