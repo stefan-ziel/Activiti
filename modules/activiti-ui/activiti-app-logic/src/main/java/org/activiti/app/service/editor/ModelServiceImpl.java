@@ -308,7 +308,7 @@ public class ModelServiceImpl implements ModelService {
 
   @Override
   @Transactional
-  public void deleteModel(String modelId, boolean cascadeHistory, boolean deleteRuntimeApp) {
+  public void deleteModel(String modelId, boolean cascadeHistory, boolean deleteRuntimeApp, String comment, User deletedBy) {
 
     Model model = modelRepository.findOne(modelId);
     if (model == null) {
@@ -320,7 +320,7 @@ public class ModelServiceImpl implements ModelService {
 
     // if the model is an app definition and the runtime app needs to be deleted, remove it now
     if (deleteRuntimeApp && model.getModelType() == Model.MODEL_TYPE_APP) {
-    	String appDefinitionId = modelRepository.appDefinitionIdByModelAndUser(modelId, SecurityUtils.getCurrentUserObject().getId());
+    	String appDefinitionId = modelRepository.appDefinitionIdByModelAndUser(modelId, deletedBy.getId());
       if (appDefinitionId != null) {
         deploymentService.deleteAppDefinition(appDefinitionId);
       }

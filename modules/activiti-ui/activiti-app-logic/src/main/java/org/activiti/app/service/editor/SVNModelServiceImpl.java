@@ -2,29 +2,32 @@
 
 package org.activiti.app.service.editor;
 
-import java.io.ByteArrayOutputStream;
+import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.io.StringReader;
 import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Date;
 import java.util.List;
 
 import javax.xml.parsers.ParserConfigurationException;
 import javax.xml.parsers.SAXParserFactory;
 
+import org.activiti.app.domain.editor.AbstractModel;
+import org.activiti.app.domain.editor.AppDefinition;
+import org.activiti.app.domain.editor.AppModelDefinition;
 import org.activiti.app.domain.editor.Model;
 import org.activiti.app.domain.editor.ModelHistory;
+import org.activiti.app.model.editor.ReviveModelResultRepresentation;
+import org.activiti.app.model.editor.ReviveModelResultRepresentation.UnresolveModelRepresentation;
 import org.activiti.app.security.SecurityUtils;
-import org.activiti.app.service.editor.FileSystemModelServiceImpl;
 import org.activiti.app.service.exception.InternalServerErrorException;
 import org.activiti.engine.identity.User;
-import org.activiti.engine.impl.identity.Authentication;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.log4j.Logger;
-import org.springframework.security.core.userdetails.UserDetails;
 import org.xml.sax.Attributes;
 import org.xml.sax.ContentHandler;
 import org.xml.sax.InputSource;
@@ -37,10 +40,10 @@ import org.xml.sax.helpers.DefaultHandler;
  */
 public class SVNModelServiceImpl extends FileSystemModelServiceImpl {
 
-	private static final Logger LOGGER = Logger.getLogger(SVNModelServiceImpl.class);
-	
+	static final Logger LOGGER = Logger.getLogger(SVNModelServiceImpl.class);
+
 	private static SAXParserFactory parserFactory = SAXParserFactory.newInstance();
-	
+
 	/**
 	 * @param pSvnRootDir
 	 */
@@ -51,13 +54,9 @@ public class SVNModelServiceImpl extends FileSystemModelServiceImpl {
 	@Override
 	public List<ModelHistory> getModelHistory(Model pModel) {
 		try {
-			List<ModelHistory> res = new ArrayList<>();
-			File dir = getFile(pModel.getId());
-			String log = svnExecute("log", dir, "--xml"); //$NON-NLS-1$ //$NON-NLS-2$
-			parse(log, new SVNLogHandler(null, pModel, res));
-			return res;
+			return svnLog(SecurityUtils.getCurrentUserObject(), pModel.getModelType(), pModel.getKey(), null);
 		}
-		catch (SAXException | IOException | ParserConfigurationException e) {
+		catch (IOException e) {
 			LOGGER.error("Could not list history for " + pModel.getId(), e); //$NON-NLS-1$
 			throw new InternalServerErrorException("Could not list history for " + pModel.getId(), e); //$NON-NLS-1$
 		}
@@ -76,35 +75,64 @@ public class SVNModelServiceImpl extends FileSystemModelServiceImpl {
 	@Override
 	public List<ModelHistory> getModelHistoryForUser(User pUser, Integer pModelType) {
 		try {
-			List<ModelHistory> res = new ArrayList<>();
-			File dir = getTypeDir(pModelType);
-			String log = svnExecute("log", dir, "-v", "--xml"); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
-			parse(log, new SVNLogHandler(pModelType, null, res));
-			return res;
+			return svnLog(pUser, pModelType, null, null);
 		}
-		catch (SAXException | IOException | ParserConfigurationException e) {
+		catch (IOException e) {
 			LOGGER.error("Could not list history for " + pModelType, e); //$NON-NLS-1$
 			throw new InternalServerErrorException("Could not list history for " + pModelType, e); //$NON-NLS-1$
 		}
 	}
 
 	@Override
-	protected void deleteFile(File pFile) throws IOException {
-		svnDelete(pFile);
-	}
+	public ReviveModelResultRepresentation reviveProcessModelHistory(ModelHistory pModelHistory, User pUser, String pNewVersionComment) {
+		Model latestModel = getModel(pModelHistory.getModelId());
+		latestModel.setModelEditorJson(pModelHistory.getModelEditorJson());
+		persistModel(latestModel, true, pNewVersionComment, pUser);
+		ReviveModelResultRepresentation result = new ReviveModelResultRepresentation();
 
-	/**
-	 * @return return a user for SVN commits
-	 */
-	protected UserDetails getSVNUser() {
-		return SecurityUtils.getCurrentActivitiAppUser();
+		// For apps, we need to make sure the referenced processes exist as models.
+		// It could be the user has deleted the process model in the meantime. We
+		// give back that info to the user.
+		if (latestModel.getModelType().intValue() == AbstractModel.MODEL_TYPE_APP) {
+			if (StringUtils.isNotEmpty(latestModel.getModelEditorJson())) {
+				try {
+					AppDefinition appDefinition = objectMapper.readValue(latestModel.getModelEditorJson(), AppDefinition.class);
+					for (AppModelDefinition appModelDefinition : appDefinition.getModels()) {
+						if (!getFile(appModelDefinition.getId()).exists()) {
+							result.getUnresolvedModels().add(new UnresolveModelRepresentation(appModelDefinition.getId(), appModelDefinition.getName(), appModelDefinition.getLastUpdatedBy()));
+						}
+					}
+				}
+				catch (Exception e) {
+					LOGGER.error("Could not deserialize app model json (id = " + latestModel.getId() + ")", e); //$NON-NLS-1$ //$NON-NLS-2$
+				}
+			}
+		}
+		return result;
 	}
 
 	@Override
-	protected Model loadModel(String pModelId, File pModelFile) throws IOException, ParseException {
-		Model model = super.loadModel(pModelId, pModelFile);
-		svnInfo(pModelFile, model);
-		return model;
+	protected void deleteFile(User pUser, File pFile, String pComment) throws IOException {
+		svnDelete(pFile);
+		svnCommit(pUser, pFile, pComment);
+	}
+
+	@Override
+	protected ModelHistory getVersion(File pFile) {
+		String log = null;
+		try {
+			SVNLogHandler handler = new SVNLogHandler(null, null, null);
+			log = svnExecute(null, "info", pFile, "--xml"); //$NON-NLS-1$ //$NON-NLS-2$
+			if (log != null && log.startsWith("<?xml")) { //$NON-NLS-1$
+				parse(log, handler);
+				handler.version.setVersion(handler.version.getVersion() + 1);
+				return handler.version;
+			}
+		}
+		catch (IOException e) {
+			LOGGER.error("XML problem", e); //$NON-NLS-1$
+		}
+		return super.getVersion(pFile);
 	}
 
 	@Override
@@ -117,8 +145,10 @@ public class SVNModelServiceImpl extends FileSystemModelServiceImpl {
 				if (toCommit == null) {
 					toCommit = file;
 				}
-				svnExecute("commit", toCommit, "--message", pComment); //$NON-NLS-1$ //$NON-NLS-2$
-				svnInfo(file, newModel);
+				// Commit it
+				svnCommit(pUpdatedBy, toCommit, pComment);
+				// and write it to the current
+				newModel = super.persistModel(newModel, false, pComment, pUpdatedBy);
 			}
 			return newModel;
 		}
@@ -128,137 +158,131 @@ public class SVNModelServiceImpl extends FileSystemModelServiceImpl {
 		}
 	}
 
-	ModelHistory getHistory(String pHistoryId) {
-		try {
-			int pos = pHistoryId.lastIndexOf('-');
-			String id = pHistoryId.substring(0, pos) + '}';
-			String revision = pHistoryId.substring(pos + 1, pHistoryId.length() - 1);
-			File file = getFile(id);
-			int type = getModelType(id);
-			SVNLogHandler handler = new SVNLogHandler(Integer.valueOf(type), null, null);
-			String log = svnExecute("log", file, "-r", revision, "--xml"); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
-			parse(log, handler);
-			Model model = getModel(id);
-			ModelHistory historyModel = new ModelHistory();
-			historyModel.setName(model.getName());
-			historyModel.setKey(getModelKey(id));
-			historyModel.setDescription(model.getDescription());
-			historyModel.setCreated(model.getCreated());
-			historyModel.setLastUpdated(handler.time);
-			historyModel.setCreatedBy(model.getCreatedBy());
-			historyModel.setLastUpdatedBy(handler.autor);
-			historyModel.setModelEditorJson(model.getModelEditorJson());
-			historyModel.setModelType(handler.type);
-			historyModel.setVersion(handler.revision);
-			historyModel.setComment(handler.comment);
-			historyModel.setModelId(id);
-			historyModel.setId(pHistoryId);
-			return historyModel;
-		}
-		catch (IOException | SAXException | ParserConfigurationException e) {
-			LOGGER.error("Could not list history for " + pHistoryId, e); //$NON-NLS-1$
-			throw new InternalServerErrorException("Could not list history for " + pHistoryId, e); //$NON-NLS-1$
-		}
-
-	}
-
-	int getVersion(String pHistoryId) {
-		int pos = pHistoryId.lastIndexOf('-');
-		return Integer.parseInt(pHistoryId.substring(pos + 1, pHistoryId.length()));
-	}
-
-	void parse(String pXMLText, ContentHandler pHandler) throws SAXException, IOException, ParserConfigurationException {
-		XMLReader reader = parserFactory.newSAXParser().getXMLReader();
-		reader.setContentHandler(pHandler);
-		reader.parse(new InputSource(new StringReader(pXMLText)));
-	}
-
-	File svnAdd(File pFile) throws IOException {
+	/**
+	 * @param pFile the file to add
+	 * @return a ancestor folder that was added or null if none
+	 * @throws IOException
+	 */
+	protected File svnAdd(File pFile) throws IOException {
 		File res = null;
 		if (SvnStat.NOT_ADDED.equals(svnStat(pFile))) {
 			res = svnAdd(pFile.getParentFile());
 			if (res == null) {
-				svnExecute("add", pFile); //$NON-NLS-1$
+				svnExecute(null, "add", pFile); //$NON-NLS-1$
 				res = pFile;
 			}
 		}
 		return res;
 	}
 
-	void svnDelete(File pFile) throws IOException {
-		svnExecute("delete", pFile); //$NON-NLS-1$
+	/**
+	 * commit a file
+	 * 
+	 * @param pUser the user
+	 * @param pFile the file
+	 * @param pComment a commit comment
+	 * @throws IOException
+	 */
+	protected void svnCommit(User pUser, File pFile, String pComment) throws IOException {
+		svnExecute(pUser, "commit", pFile, "--message", pComment); //$NON-NLS-1$ //$NON-NLS-2$
 	}
 
-	String svnExecute(String pCommand, File pFile, String... pParams) throws IOException {
-		UserDetails user = getSVNUser();
+	/**
+	 * delete a file from svn
+	 * 
+	 * @param pFile the file
+	 * @throws IOException
+	 */
+	protected void svnDelete(File pFile) throws IOException {
+		svnExecute(null, "delete", pFile); //$NON-NLS-1$
+	}
+
+	/**
+	 * execute a svn commandline and return the console output
+	 * 
+	 * @param pUser user for this operation. may be null
+	 * @param pCommand the svn-command
+	 * @param pFile the path
+	 * @param pParams aditional params
+	 * @return console output
+	 * @throws IOException execution error
+	 */
+	protected String svnExecute(User pUser, String pCommand, File pFile, String... pParams) throws IOException {
 		ProcessBuilder procBuilder = new ProcessBuilder();
 		procBuilder.command().add("svn"); //$NON-NLS-1$
 		procBuilder.command().add(pCommand);
-		if (user != null) {
+		if (pUser != null) {
 			procBuilder.command().add("--username"); //$NON-NLS-1$
-			procBuilder.command().add(user.getUsername());
+			procBuilder.command().add(pUser.getId());
 			procBuilder.command().add("--password"); //$NON-NLS-1$
-			procBuilder.command().add(user.getPassword());
+			procBuilder.command().add(pUser.getPassword());
 		}
 		procBuilder.command().addAll(Arrays.asList(pParams));
 		procBuilder.command().add(pFile.getAbsolutePath());
-		if(LOGGER.isDebugEnabled()){
+		if (LOGGER.isDebugEnabled()) {
 			LOGGER.debug(procBuilder.command().toString());
 		}
-		try{ 
-		Process proc = procBuilder.start();
-		Piper outputBuffer = new Piper(proc.getInputStream());
-		Piper errorBuffer = new Piper(proc.getInputStream());
-		outputBuffer.start();
-		errorBuffer.start();
-		int exitCode = proc.waitFor();
-		if (exitCode != 0) {
-			throw new IOException("External command failed with error:\n" + errorBuffer.toString()); //$NON-NLS-1$
-		}
-		String terminal = outputBuffer.toString();
-		LOGGER.debug(terminal);
-		return terminal;
-	}
-	catch (InterruptedException irex) {
-		LOGGER.error(irex);
-		throw new IOException("External command interrupted"); //$NON-NLS-1$
-	}
-	}
-
-	void svnInfo(File pFile, Model pModel) throws IOException {
 		try {
-			SVNLogHandler handler = new SVNLogHandler(null, null, null);
-			String log = svnExecute("info", pFile, "--xml"); //$NON-NLS-1$ //$NON-NLS-2$
-			parse(log, handler);
-			pModel.setLastUpdated(handler.time);
-			pModel.setLastUpdatedBy(handler.autor);
-			pModel.setVersion(handler.revision);
-			pModel.setComment(handler.comment);
-			if (pModel.getCreated() == null) {
-				pModel.setCreated(handler.time);
+			Process proc = procBuilder.start();
+			Piper outputBuffer = new Piper(proc.getInputStream());
+			Piper errorBuffer = new Piper(proc.getErrorStream());
+			outputBuffer.start();
+			errorBuffer.start();
+			int exitCode = proc.waitFor();
+			if (exitCode != 0) {
+				while (errorBuffer.isAlive()) {
+					// busy waiting for a few millies just to be sure all bytes are read.
+				}
+				throw new IOException("External command failed with exit code " + exitCode + ':' + errorBuffer.toString()); //$NON-NLS-1$
 			}
-			if (pModel.getCreatedBy() == null) {
-				pModel.setCreatedBy(handler.autor);
+			while (outputBuffer.isAlive()) {
+				// busy waiting for a few millies just to be sure all bytes are read.
 			}
+			String terminal = outputBuffer.toString();
+			LOGGER.debug(terminal);
+			return terminal;
 		}
-		catch (SAXException | ParserConfigurationException e) {
-			if (pModel.getLastUpdated() == null) {
-				pModel.setLastUpdated(new Date());
-			}
-			if (pModel.getLastUpdated() == null) {
-				pModel.setLastUpdatedBy(Authentication.getAuthenticatedUserId());
-			}
-			if (pModel.getCreated() == null) {
-				pModel.setCreated(new Date());
-			}
-			if (pModel.getCreatedBy() == null) {
-				pModel.setCreatedBy(Authentication.getAuthenticatedUserId());
-			}
+		catch (InterruptedException irex) {
+			LOGGER.error(irex);
+			throw new IOException("External command interrupted"); //$NON-NLS-1$
 		}
 	}
 
-	SvnStat svnStat(File pFile) throws IOException {
-		String stat = svnExecute("stat", pFile, "--depth", "empty"); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
+	/**
+	 * Do a svn log
+	 * 
+	 * @param pUser the user. may be null
+	 * @param pKey the object key to retrieve history
+	 * @param pModelType type of model. may be null
+	 * @param pRevision a fixed revision. null for all
+	 * @return
+	 * @throws IOException
+	 */
+	protected List<ModelHistory> svnLog(User pUser, Integer pModelType, String pKey, String pRevision) throws IOException {
+		List<ModelHistory> res = new ArrayList<>();
+		String log;
+		if (pRevision == null && pKey == null) {
+			log = svnExecute(pUser, "log", getTypeDir(pModelType), "-v", "--xml"); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
+		} else if (pKey == null) {
+			log = svnExecute(pUser, "log", getTypeDir(pModelType), "-r", pRevision, "-v", "--xml"); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$ //$NON-NLS-4$
+		} else if (pRevision == null) {
+			log = svnExecute(pUser, "log", getFile(getId(pModelType, pKey)), "--xml"); //$NON-NLS-1$ //$NON-NLS-2$
+		} else {
+			log = svnExecute(pUser, "log", getFile(getId(pModelType, pKey)), "-r", pRevision, "--xml"); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
+		}
+		parse(log, new SVNLogHandler(pModelType, pKey, res));
+		return res;
+	}
+
+	/**
+	 * get status info
+	 * 
+	 * @param pFile the file
+	 * @return
+	 * @throws IOException
+	 */
+	protected SvnStat svnStat(File pFile) throws IOException {
+		String stat = svnExecute(null, "stat", pFile, "--depth", "empty"); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
 		if (stat.length() == 0) {
 			return SvnStat.CLEAN;
 		}
@@ -276,23 +300,68 @@ public class SVNModelServiceImpl extends FileSystemModelServiceImpl {
 		return SvnStat.OTHERS;
 	}
 
+	ModelHistory getHistory(String pHistoryId) {
+
+		try {
+			String id = getModelId(pHistoryId);
+			String revision = getRevision(pHistoryId);
+			List<ModelHistory> list = svnLog(SecurityUtils.getCurrentUserObject(), getModelType(id), getModelKey(id), revision);
+			if (list.size() == 0) {
+				throw new InternalServerErrorException("Could not find history for " + pHistoryId); //$NON-NLS-1$
+			}
+			String text = svnExecute(null, "cat", getFile(id), "-r", revision); //$NON-NLS-1$ //$NON-NLS-2$
+			Model model = loadModel(getModelType(id), getModelKey(id), list.get(0), new StringReader(text));
+			return createNewModelhistory(model);
+
+		}
+		catch (IOException | ParseException e) {
+			LOGGER.error("Could not load history for " + pHistoryId, e); //$NON-NLS-1$
+			throw new InternalServerErrorException("Could not load history for " + pHistoryId, e); //$NON-NLS-1$
+		}
+	}
+
+	String getModelId(String pHistoryId) {
+		int pos = pHistoryId.lastIndexOf('-');
+		return pHistoryId.substring(0, pos) + '}';
+	}
+
+	String getRevision(String pHistoryId) {
+		int pos = pHistoryId.lastIndexOf('-');
+		return pHistoryId.substring(pos + 1, pHistoryId.length() - 1);
+	}
+
+	int getVersion(String pHistoryId) {
+		int pos = pHistoryId.lastIndexOf('-');
+		return Integer.parseInt(pHistoryId.substring(pos + 1, pHistoryId.length()));
+	}
+
+	void parse(String pXMLText, ContentHandler pHandler) throws IOException {
+		try {
+			XMLReader reader = parserFactory.newSAXParser().getXMLReader();
+			reader.setContentHandler(pHandler);
+			reader.parse(new InputSource(new StringReader(pXMLText)));
+		}
+		catch (SAXException | ParserConfigurationException e) {
+			LOGGER.error("Invalid XML: " + pXMLText, e); //$NON-NLS-1$
+			throw new IOException(e);
+		}
+	}
+
 	class SVNLogHandler extends DefaultHandler {
 
-		Model model;
 		Integer type;
+		String key;
+		String path;
+		SvnStat stat;
 		List<ModelHistory> res;
 		StringBuffer text;
-		SvnStat stat;
-		String autor;
-		String comment;
-		Date time;
-		int revision;
+		ModelHistory version;
 
-		public SVNLogHandler(Integer pType, Model pModel, List<ModelHistory> pRes) {
+		public SVNLogHandler(Integer pType, String pKey, List<ModelHistory> pRes) {
 			super();
 			res = pRes;
-			type = pType;
-			model = pModel;
+			type = pType == null ? Integer.valueOf(AbstractModel.MODEL_TYPE_BPMN) : pType;
+			key = pKey;
 		}
 
 		@Override
@@ -306,63 +375,40 @@ public class SVNModelServiceImpl extends FileSystemModelServiceImpl {
 		public void endElement(String pUri, String pLocalName, String pQName) throws SAXException {
 			switch (pQName) {
 				case "author": //$NON-NLS-1$
-					autor = endText();
+					version.setLastUpdatedBy(endText());
 					break;
 				case "msg": //$NON-NLS-1$
-					comment = endText();
+					version.setComment(endText());
 					break;
 				case "date": //$NON-NLS-1$
 					try {
-						time = JSON_DATE_FORMAT.parse(endText());
+						version.setLastUpdated(JSON_DATE_FORMAT.parse(endText()));
 					}
 					catch (ParseException e) {
 						throw new SAXException(e);
 					}
 					break;
 				case "path": //$NON-NLS-1$
-					String key = endText();
-					int pos = key.lastIndexOf('/');
-					if (pos >= 0) {
-						key = key.substring(pos + 1);
-					}
-					if (key.endsWith(EXTENSION)) {
-						key = key.substring(0, key.length() - EXTENSION.length());
-						String id = getId(type, key);
-						Model aModel = getModel(id);
-						ModelHistory historyModel = new ModelHistory();
-						historyModel.setName(aModel.getName());
-						historyModel.setKey(key);
-						historyModel.setDescription(aModel.getDescription());
-						historyModel.setCreated(aModel.getCreated());
-						historyModel.setLastUpdated(time);
-						historyModel.setCreatedBy(aModel.getCreatedBy());
-						historyModel.setLastUpdatedBy(autor);
-						historyModel.setModelEditorJson(aModel.getModelEditorJson());
-						historyModel.setModelType(type);
-						historyModel.setVersion(revision);
-						historyModel.setComment(comment);
-						historyModel.setModelId(id);
-						historyModel.setId(getHistoryId(type, key, revision));
-						res.add(historyModel);
+					if (key == null) {
+						path = endText();
+						int pos = path.lastIndexOf('/');
+						if (pos >= 0) {
+							path = path.substring(pos + 1);
+						}
+						if (path.endsWith(EXTENSION)) {
+							path = path.substring(0, key.length() - EXTENSION.length());
+						} else {
+							path = null;
+						}
 					}
 					break;
 				case "logentry": //$NON-NLS-1$
-					if (model != null) {
-						ModelHistory historyModel = new ModelHistory();
-						historyModel.setName(model.getName());
-						historyModel.setKey(model.getKey());
-						historyModel.setDescription(model.getDescription());
-						historyModel.setCreated(model.getCreated());
-						historyModel.setLastUpdated(time);
-						historyModel.setCreatedBy(model.getCreatedBy());
-						historyModel.setLastUpdatedBy(autor);
-						historyModel.setModelEditorJson(model.getModelEditorJson());
-						historyModel.setModelType(type);
-						historyModel.setVersion(revision);
-						historyModel.setComment(comment);
-						historyModel.setModelId(model.getId());
-						historyModel.setId(getHistoryId(model.getModelType(), model.getKey(), revision));
-						res.add(historyModel);
+					if (type != null && key != null && version != null) {
+						version.setId(getHistoryId(type, key, version.getVersion()));
+						version.setModelId(getId(type, key));
+						version.setModelType(type);
+						version.setKey(key);
+						res.add(version);
 					}
 					break;
 			}
@@ -373,7 +419,9 @@ public class SVNModelServiceImpl extends FileSystemModelServiceImpl {
 			switch (pQName) {
 				case "commit": //$NON-NLS-1$
 				case "logentry": //$NON-NLS-1$
-					revision = Integer.parseInt(pAttributes.getValue("revision")); //$NON-NLS-1$
+					version = new ModelHistory();
+					version.setVersion(Integer.parseInt(pAttributes.getValue("revision"))); //$NON-NLS-1$
+					path = key;
 					break;
 				case "author": //$NON-NLS-1$
 				case "date": //$NON-NLS-1$
@@ -415,49 +463,46 @@ public class SVNModelServiceImpl extends FileSystemModelServiceImpl {
 	enum SvnStat {
 		CLEAN, NOT_ADDED, NEW, MODIFIED, DELETED, OTHERS;
 	}
-	
-	
 
 	private static class Piper extends Thread {
 
-		private InputStream inputStream;
-		ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+		private BufferedReader input;
+		StringBuilder buffer = new StringBuilder();
+		String result;
 
 		/**
-		 * @param pInputStream Stream Quelle
+		 * @param pInputStream Stream source
 		 */
 		public Piper(InputStream pInputStream) {
-			inputStream = pInputStream;
+			input = new BufferedReader(new InputStreamReader(pInputStream));
 		}
 
-		/**
-		 * @see java.lang.Runnable#run()
-		 */
 		@Override
 		public void run() {
 			this.setName("CommandExecuteThread"); //$NON-NLS-1$
 
 			try {
-				byte buffer[] = new byte[4096];
-				int bytesRead;
-				while ((bytesRead = inputStream.read(buffer)) != -1) {
-					outputStream.write(buffer, 0, bytesRead);
+				while (true) {
+					int c = input.read();
+					if (c == -1) {
+						break;
+					}
+					buffer.append((char) c);
 				}
+				result = buffer.toString();
 			}
 			catch (IOException ioe) {
-				// NOP
+				LOGGER.error(ioe);
 			}
 		}
 
 		/**
 		 * @return return all content read
-		 * @see java.lang.Thread#toString()
 		 */
 		@Override
 		public String toString() {
-			return outputStream.toString();
+			return result;
 		}
 	}
-
 
 }
