@@ -376,10 +376,7 @@ public class FileSystemModelServiceImpl implements ModelService {
 
 	/**
 	 * a History entry for the current Model Version
-<<<<<<< HEAD
 	 * 
-=======
->>>>>>> branch '6.x-c' of https://github.com/stefan-ziel/Activiti.git
 	 * @param model current Model
 	 * @return an equivalent History entry
 	 */
@@ -509,11 +506,7 @@ public class FileSystemModelServiceImpl implements ModelService {
 	 * @throws IOException
 	 * @throws ParseException
 	 */
-<<<<<<< HEAD
 	protected Model loadModel(Integer pType, String pKey, ModelHistory pVersion, Reader pModelFile) throws IOException, ParseException {
-=======
-	protected Model loadModel(String pModelId, Reader pModelFile) throws IOException, ParseException {
->>>>>>> branch '6.x-c' of https://github.com/stefan-ziel/Activiti.git
 		ObjectNode modelNode = (ObjectNode) objectMapper.readTree(pModelFile);
 		Model newModel = new Model();
 		newModel.setId(getId(pType, pKey));
@@ -643,17 +636,6 @@ public class FileSystemModelServiceImpl implements ModelService {
 		return (ObjectNode) modelNode.get("modelEditorJson"); //$NON-NLS-1$
 	}
 
-<<<<<<< HEAD
-=======
-	Model loadModel(File pModelFile) throws IOException, ParseException {
-		return loadModel(getId(pModelFile), new InputStreamReader(new FileInputStream(pModelFile)));
-	}
-
-	Model loadModel(String pModelId) throws IOException, ParseException {
-		return loadModel(pModelId, new InputStreamReader(new FileInputStream(getFile(pModelId))));
-	}
-
->>>>>>> branch '6.x-c' of https://github.com/stefan-ziel/Activiti.git
 	void putTextValue(ObjectNode pJsonObject, String pName, String pValue) {
 		if (StringUtils.isNotEmpty(pValue)) {
 			pJsonObject.put(pName, pValue);
