@@ -99,7 +99,8 @@ public class ModelsResource extends AbstractModelsResource {
         logger.error("Error creating form model", e);
         throw new InternalServerErrorException("Error creating form");
       }
-
+    } else if (modelRepresentation.getModelType() != null && modelRepresentation.getModelType().equals(AbstractModel.MODEL_TYPE_TEMPLATE)) {
+      json = "{}";
     } else if (modelRepresentation.getModelType() != null && modelRepresentation.getModelType().equals(AbstractModel.MODEL_TYPE_DECISION_TABLE)) {
       try {
         DecisionTableDefinitionRepresentation decisionTableDefinition = new DecisionTableDefinitionRepresentation();

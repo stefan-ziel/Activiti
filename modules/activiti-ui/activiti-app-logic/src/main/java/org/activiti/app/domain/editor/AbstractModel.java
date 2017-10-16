@@ -30,6 +30,7 @@ import org.hibernate.annotations.GenericGenerator;
 public class AbstractModel {
 
   public static final int MODEL_TYPE_BPMN = 0;
+  public static final int MODEL_TYPE_TEMPLATE = 1;
   public static final int MODEL_TYPE_FORM = 2;
   public static final int MODEL_TYPE_APP = 3;
   public static final int MODEL_TYPE_DECISION_TABLE = 4;

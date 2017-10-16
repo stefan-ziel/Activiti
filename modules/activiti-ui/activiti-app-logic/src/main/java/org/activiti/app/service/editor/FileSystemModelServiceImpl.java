@@ -18,7 +18,6 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.Reader;
 import java.text.ParseException;
-import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
@@ -60,12 +59,10 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
  */
 public class FileSystemModelServiceImpl implements ModelService {
 
-	/** JSON-format for dates */
-	protected static final SimpleDateFormat JSON_DATE_FORMAT = new SimpleDateFormat("yyyy-MM-dd'T'hh:mm:ss.SSS"); //$NON-NLS-1$
 	/** default extension */
 	protected static final String EXTENSION = ".json"; //$NON-NLS-1$
 	/** model type to subpath mapping */
-	protected static final String[] MODEL_TYPE_DIR = {"bpmn", "unknown", "form", "app", "decisiontable"}; //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$ //$NON-NLS-4$ //$NON-NLS-5$
+	protected static final String[] MODEL_TYPE_DIR = {"bpmn", "template", "form", "app", "decisiontable"}; //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$ //$NON-NLS-4$ //$NON-NLS-5$
 	private static final String ID = "id"; //$NON-NLS-1$
 	private static final Logger LOGGER = Logger.getLogger(FileSystemModelServiceImpl.class);
 
@@ -95,7 +92,7 @@ public class FileSystemModelServiceImpl implements ModelService {
 	@Override
 	public Model createModel(Model pNewModel, User pCreatedBy) {
 		persistModel(pNewModel, false, null, pCreatedBy);
-		return pNewModel;
+		return getModel(pNewModel.getId());
 	}
 
 	@Override
@@ -106,22 +103,20 @@ public class FileSystemModelServiceImpl implements ModelService {
 		newModel.setModelType(pModel.getModelType());
 		newModel.setDescription(pModel.getDescription());
 		newModel.setModelEditorJson(pEditorJson);
-		newModel.setCreated(new Date());
-		newModel.setCreatedBy(pCreatedBy.getId());
-		persistModel(newModel, false, null, pCreatedBy);
-		return newModel;
+		newModel.setId(getId(pModel.getModelType(), pModel.getKey()));
+		return createModel(newModel, pCreatedBy);
 	}
 
 	@Override
 	public Model createNewModelVersion(Model pModel, String pComment, User pUpdatedBy) {
 		persistModel(pModel, true, pComment, pUpdatedBy);
-		return pModel;
+		return getModel(pModel.getId());
 	}
 
 	@Override
 	public ModelHistory createNewModelVersionAndReturnModelHistory(Model pModel, String pComment, User pUpdatedBy) {
 		persistModel(pModel, true, pComment, pUpdatedBy);
-		return createNewModelhistory(pModel);
+		return createNewModelhistory(getModel(pModel.getId()));
 	}
 
 	@Override
@@ -215,9 +210,15 @@ public class FileSystemModelServiceImpl implements ModelService {
 	public Model getModel(String pModelId) {
 		try {
 			File file = getFile(pModelId);
-			return loadModel(getModelType(pModelId), getModelKey(pModelId), getVersion(file), new InputStreamReader(new FileInputStream(file)));
+			InputStreamReader is = new InputStreamReader(new FileInputStream(file));
+			try {
+				return loadModel(getModelType(pModelId), getModelKey(pModelId), getVersion(file), is);
+			}
+			finally {
+				is.close();
+			}
 		}
-		catch (IOException | ParseException e) {
+		catch (IOException e) {
 			LOGGER.error("Could not open model for " + pModelId, e); //$NON-NLS-1$
 			throw new InternalServerErrorException("Could not open model for " + pModelId); //$NON-NLS-1$
 		}
@@ -276,7 +277,7 @@ public class FileSystemModelServiceImpl implements ModelService {
 
 					@Override
 					public boolean accept(File pDir, String pName) {
-						return pName.endsWith(EXTENSION) && (filter == null || pName.toLowerCase().indexOf(filter) > 0);
+						return pName.endsWith(EXTENSION) && (filter == null || pName.toLowerCase().indexOf(filter) >= 0);
 					}
 
 				});
@@ -289,8 +290,7 @@ public class FileSystemModelServiceImpl implements ModelService {
 
 			return res;
 		}
-		catch (IOException | ParseException e) {
-			LOGGER.error("Could not list models for " + pModelType, e); //$NON-NLS-1$
+		catch (IOException e) {
 			throw new InternalServerErrorException("Could not list models for " + pModelType, e); //$NON-NLS-1$
 		}
 	}
@@ -341,7 +341,8 @@ public class FileSystemModelServiceImpl implements ModelService {
 
 	@Override
 	public Model saveModel(Model modelObject) {
-		return persistModel(modelObject, false, null, null);
+		persistModel(modelObject, false, null, null);
+		return getModel(modelObject.getId());
 	}
 
 	@Override
@@ -362,7 +363,7 @@ public class FileSystemModelServiceImpl implements ModelService {
 			String id = getId(pModelType, pKey);
 			modelKeyResponse.setKey(pKey);
 			if (pModel == null || pModel.getKey() == null || !pModel.getKey().equals(pKey)) {
-				modelKeyResponse.setKeyAlreadyExists(getFile(getId(pModelType, pKey)).exists());
+				modelKeyResponse.setKeyAlreadyExists(getFile(id).exists());
 				modelKeyResponse.setId(id);
 				modelKeyResponse.setName(pKey);
 			}
@@ -506,7 +507,7 @@ public class FileSystemModelServiceImpl implements ModelService {
 	 * @throws IOException
 	 * @throws ParseException
 	 */
-	protected Model loadModel(Integer pType, String pKey, ModelHistory pVersion, Reader pModelFile) throws IOException, ParseException {
+	protected Model loadModel(Integer pType, String pKey, ModelHistory pVersion, Reader pModelFile) throws IOException {
 		ObjectNode modelNode = (ObjectNode) objectMapper.readTree(pModelFile);
 		Model newModel = new Model();
 		newModel.setId(getId(pType, pKey));
@@ -533,18 +534,17 @@ public class FileSystemModelServiceImpl implements ModelService {
 	 * @param pNewVersion Create new Repository version
 	 * @param pComment Commit Comment
 	 * @param pUpdatedBy User updating
-	 * @return updated Model
+	 * @throws IOException
 	 */
-	protected Model persistModel(Model pModel, boolean pNewVersion, String pComment, User pUpdatedBy) {
+	protected void persistModel(Model pModel, boolean pNewVersion, String pComment, User pUpdatedBy) {
+		ObjectNode modelJson = objectMapper.createObjectNode();
+		modelJson.put("name", pModel.getName()); //$NON-NLS-1$
+		modelJson.put("description", pModel.getDescription()); //$NON-NLS-1$
+		modelJson.put("createdBy", pModel.getCreatedBy() == null ? pUpdatedBy.getId() : pModel.getCreatedBy()); //$NON-NLS-1$
+		modelJson.put("created", objectMapper.getDeserializationConfig().getDateFormat().format(pModel.getCreated() == null ? new Date() : pModel.getCreated())); //$NON-NLS-1$
+		modelJson.put("lastUpdatedBy", pUpdatedBy.getId()); //$NON-NLS-1$
+		modelJson.put("lastUpdated", objectMapper.getDeserializationConfig().getDateFormat().format(new Date())); //$NON-NLS-1$
 		try {
-			ObjectNode modelJson = objectMapper.createObjectNode();
-			modelJson.put("name", pModel.getName()); //$NON-NLS-1$
-			modelJson.put("description", pModel.getDescription()); //$NON-NLS-1$
-			modelJson.put("createdBy", pModel.getCreatedBy() == null ? pUpdatedBy.getId() : pModel.getCreatedBy()); //$NON-NLS-1$
-			modelJson.put("created", JSON_DATE_FORMAT.format(pModel.getCreated() == null ? new Date() : pModel.getCreated())); //$NON-NLS-1$
-			modelJson.put("lastUpdatedBy", pUpdatedBy.getId()); //$NON-NLS-1$
-			modelJson.put("lastUpdated", JSON_DATE_FORMAT.format(new Date())); //$NON-NLS-1$
-
 			File file = getFile(pModel.getId());
 			// Parse json to java
 			if (pModel.getModelEditorJson() != null) {
@@ -575,16 +575,19 @@ public class FileSystemModelServiceImpl implements ModelService {
 				os.close();
 			}
 		}
-		catch (Exception e) {
-			LOGGER.error("Could not deserialize json model", e); //$NON-NLS-1$
-			throw new InternalServerErrorException("Could not deserialize json model"); //$NON-NLS-1$
+		catch (IOException e) {
+			throw new InternalServerErrorException("unable to stoe model " + pModel.getId()); //$NON-NLS-1$
 		}
-		return pModel;
 	}
 
-	Date getDateValue(ObjectNode pJsonObject, String pName) throws ParseException {
+	Date getDateValue(ObjectNode pJsonObject, String pName) throws IOException {
 		JsonNode jn = pJsonObject.get(pName);
-		return jn == null ? null : JSON_DATE_FORMAT.parse(jn.textValue());
+		try {
+			return jn == null ? null : objectMapper.getDeserializationConfig().getDateFormat().parse(jn.textValue());
+		}
+		catch (ParseException e) {
+			throw new IOException("Cound not parse conten of " + pName, e); //$NON-NLS-1$
+		}
 	}
 
 	String getHistoryId(AbstractModel pModel) {
@@ -618,8 +621,6 @@ public class FileSystemModelServiceImpl implements ModelService {
 	}
 
 	Model internalSave(String name, String key, String description, String editorJson, boolean newVersion, String newVersionComment, byte[] imageBytes, User updatedBy, Model modelObject) {
-		modelObject.setLastUpdated(new Date());
-		modelObject.setLastUpdatedBy(updatedBy.getId());
 		modelObject.setName(name);
 		modelObject.setKey(key);
 		modelObject.setDescription(description);
@@ -628,7 +629,8 @@ public class FileSystemModelServiceImpl implements ModelService {
 		if (imageBytes != null) {
 			modelObject.setThumbnail(imageBytes);
 		}
-		return persistModel(modelObject, newVersion, newVersionComment, updatedBy);
+		persistModel(modelObject, newVersion, newVersionComment, updatedBy);
+		return getModel(modelObject.getId());
 	}
 
 	ObjectNode loadJson(String pModelId) throws IOException {

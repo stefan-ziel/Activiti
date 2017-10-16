@@ -130,15 +130,15 @@ public class SVNModelServiceImpl extends FileSystemModelServiceImpl {
 			}
 		}
 		catch (IOException e) {
-			LOGGER.error("XML problem", e); //$NON-NLS-1$
+			LOGGER.error(e.getMessage()); 
 		}
 		return super.getVersion(pFile);
 	}
 
 	@Override
-	protected Model persistModel(Model pModel, boolean pNewVersion, String pComment, User pUpdatedBy) {
+	protected void persistModel(Model pModel, boolean pNewVersion, String pComment, User pUpdatedBy) {
 		try {
-			Model newModel = super.persistModel(pModel, pNewVersion, pComment, pUpdatedBy);
+			super.persistModel(pModel, pNewVersion, pComment, pUpdatedBy);
 			if (pNewVersion) {
 				File file = getFile(pModel.getId());
 				File toCommit = svnAdd(file);
@@ -147,10 +147,7 @@ public class SVNModelServiceImpl extends FileSystemModelServiceImpl {
 				}
 				// Commit it
 				svnCommit(pUpdatedBy, toCommit, pComment);
-				// and write it to the current
-				newModel = super.persistModel(newModel, false, pComment, pUpdatedBy);
 			}
-			return newModel;
 		}
 		catch (IOException e) {
 			LOGGER.error("Could not commit model file", e); //$NON-NLS-1$
@@ -314,7 +311,7 @@ public class SVNModelServiceImpl extends FileSystemModelServiceImpl {
 			return createNewModelhistory(model);
 
 		}
-		catch (IOException | ParseException e) {
+		catch (IOException e) {
 			LOGGER.error("Could not load history for " + pHistoryId, e); //$NON-NLS-1$
 			throw new InternalServerErrorException("Could not load history for " + pHistoryId, e); //$NON-NLS-1$
 		}
@@ -382,7 +379,7 @@ public class SVNModelServiceImpl extends FileSystemModelServiceImpl {
 					break;
 				case "date": //$NON-NLS-1$
 					try {
-						version.setLastUpdated(JSON_DATE_FORMAT.parse(endText()));
+						version.setLastUpdated(objectMapper.getDeserializationConfig().getDateFormat().parse(endText()));
 					}
 					catch (ParseException e) {
 						throw new SAXException(e);

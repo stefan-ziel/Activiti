@@ -24,7 +24,6 @@ import org.activiti.app.domain.editor.AbstractModel;
 import org.activiti.app.domain.editor.Model;
 import org.activiti.app.model.common.ResultListDataRepresentation;
 import org.activiti.app.model.editor.form.FormRepresentation;
-import org.activiti.app.repository.editor.ModelRepository;
 import org.activiti.app.service.api.ModelService;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.http.NameValuePair;
