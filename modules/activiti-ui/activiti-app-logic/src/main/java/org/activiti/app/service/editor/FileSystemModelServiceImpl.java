@@ -92,7 +92,7 @@ public class FileSystemModelServiceImpl implements ModelService {
 	@Override
 	public Model createModel(Model pNewModel, User pCreatedBy) {
 		persistModel(pNewModel, false, null, pCreatedBy);
-		return getModel(pNewModel.getId());
+		return getModel(getId(pNewModel));
 	}
 
 	@Override
@@ -110,13 +110,13 @@ public class FileSystemModelServiceImpl implements ModelService {
 	@Override
 	public Model createNewModelVersion(Model pModel, String pComment, User pUpdatedBy) {
 		persistModel(pModel, true, pComment, pUpdatedBy);
-		return getModel(pModel.getId());
+		return getModel(getId(pModel));
 	}
 
 	@Override
 	public ModelHistory createNewModelVersionAndReturnModelHistory(Model pModel, String pComment, User pUpdatedBy) {
 		persistModel(pModel, true, pComment, pUpdatedBy);
-		return createNewModelhistory(getModel(pModel.getId()));
+		return createNewModelhistory(getModel(getId(pModel)));
 	}
 
 	@Override
@@ -141,7 +141,7 @@ public class FileSystemModelServiceImpl implements ModelService {
 			ObjectNode editorJsonNode;
 			String json = pModel.getModelEditorJson();
 			if (json == null) {
-				editorJsonNode = loadJson(pModel.getId());
+				editorJsonNode = loadJson(getId(pModel));
 			} else {
 				editorJsonNode = (ObjectNode) objectMapper.readTree(json);
 			}
@@ -174,7 +174,7 @@ public class FileSystemModelServiceImpl implements ModelService {
 			ObjectNode editorJsonNode = (ObjectNode) objectMapper.readTree(pModel.getModelEditorJson());
 			Map<String, String> formKeyMap = new HashMap<String, String>();
 			for (Model formModel : pFormMap.values()) {
-				formKeyMap.put(formModel.getId(), formModel.getKey());
+				formKeyMap.put(getId(formModel), formModel.getKey());
 			}
 
 			Map<String, String> decisionTableKeyMap = new HashMap<String, String>();
@@ -267,7 +267,6 @@ public class FileSystemModelServiceImpl implements ModelService {
 
 	@Override
 	public List<Model> getModelsByModelType(Integer pModelType, String pFilter) {
-		try {
 			final String filter = pFilter == null ? null : pFilter.replace("%", ""); //$NON-NLS-1$ //$NON-NLS-2$
 			String typeName = MODEL_TYPE_DIR[pModelType == null ? 0 : pModelType.intValue()];
 			File typeDir = new File(rootDir, typeName);
@@ -284,15 +283,16 @@ public class FileSystemModelServiceImpl implements ModelService {
 
 				for (File file : files) {
 					String id = getId(file);
-					res.add(loadModel(getModelType(id), getModelKey(id), getVersion(file), new InputStreamReader(new FileInputStream(file))));
+					try {
+						res.add(loadModel(getModelType(id), getModelKey(id), getVersion(file), new InputStreamReader(new FileInputStream(file))));
+					}
+					catch (Throwable e) {
+						LOGGER.warn("Unable to load model file "+id,e); //$NON-NLS-1$
+					}
 				}
 			}
 
 			return res;
-		}
-		catch (IOException e) {
-			throw new InternalServerErrorException("Could not list models for " + pModelType, e); //$NON-NLS-1$
-		}
 	}
 
 	@Override
@@ -342,7 +342,7 @@ public class FileSystemModelServiceImpl implements ModelService {
 	@Override
 	public Model saveModel(Model modelObject) {
 		persistModel(modelObject, false, null, null);
-		return getModel(modelObject.getId());
+		return getModel(getId(modelObject));
 	}
 
 	@Override
@@ -394,7 +394,7 @@ public class FileSystemModelServiceImpl implements ModelService {
 		historyModel.setModelType(model.getModelType());
 		historyModel.setVersion(model.getVersion());
 		historyModel.setComment(model.getComment());
-		historyModel.setModelId(model.getId());
+		historyModel.setModelId(getId(model));
 		historyModel.setId(getHistoryId(model));
 		return historyModel;
 	}
@@ -542,10 +542,10 @@ public class FileSystemModelServiceImpl implements ModelService {
 		modelJson.put("description", pModel.getDescription()); //$NON-NLS-1$
 		modelJson.put("createdBy", pModel.getCreatedBy() == null ? pUpdatedBy.getId() : pModel.getCreatedBy()); //$NON-NLS-1$
 		modelJson.put("created", objectMapper.getDeserializationConfig().getDateFormat().format(pModel.getCreated() == null ? new Date() : pModel.getCreated())); //$NON-NLS-1$
-		modelJson.put("lastUpdatedBy", pUpdatedBy.getId()); //$NON-NLS-1$
+		modelJson.put("lastUpdatedBy", pUpdatedBy == null ? pModel.getLastUpdatedBy() : pUpdatedBy.getId()); //$NON-NLS-1$
 		modelJson.put("lastUpdated", objectMapper.getDeserializationConfig().getDateFormat().format(new Date())); //$NON-NLS-1$
 		try {
-			File file = getFile(pModel.getId());
+			File file = getFile(getId(pModel));
 			// Parse json to java
 			if (pModel.getModelEditorJson() != null) {
 				ObjectNode jsonNode = (ObjectNode) objectMapper.readTree(pModel.getModelEditorJson());
@@ -576,7 +576,7 @@ public class FileSystemModelServiceImpl implements ModelService {
 			}
 		}
 		catch (IOException e) {
-			throw new InternalServerErrorException("unable to stoe model " + pModel.getId()); //$NON-NLS-1$
+			throw new InternalServerErrorException("unable to stoe model " + getId(pModel)); //$NON-NLS-1$
 		}
 	}
 
@@ -598,10 +598,13 @@ public class FileSystemModelServiceImpl implements ModelService {
 	}
 
 	String getId(AbstractModel pModel) {
-		if (pModel.getKey() == null) {
-			throw new InternalServerErrorException("Model must have a valid key"); //$NON-NLS-1$
+		if(pModel.getId() == null){
+			if (pModel.getKey() == null) {
+				throw new InternalServerErrorException("Model must have a valid key"); //$NON-NLS-1$
+			}
+			pModel.setId(getId(pModel.getModelType(), pModel.getKey()));
 		}
-		return getId(pModel.getModelType(), pModel.getKey());
+		return pModel.getId();
 	}
 
 	String getId(File pFile) {
@@ -630,7 +633,7 @@ public class FileSystemModelServiceImpl implements ModelService {
 			modelObject.setThumbnail(imageBytes);
 		}
 		persistModel(modelObject, newVersion, newVersionComment, updatedBy);
-		return getModel(modelObject.getId());
+		return getModel(getId(modelObject));
 	}
 
 	ObjectNode loadJson(String pModelId) throws IOException {
