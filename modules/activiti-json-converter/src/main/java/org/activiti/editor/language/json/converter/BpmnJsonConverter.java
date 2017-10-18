@@ -255,6 +255,7 @@ public class BpmnJsonConverter implements EditorJsonConstants, StencilConstants,
     BpmnJsonConverterUtil.convertListenersToJson(mainProcess.getExecutionListeners(), true, propertiesNode);
     BpmnJsonConverterUtil.convertEventListenersToJson(mainProcess.getEventListeners(), propertiesNode);
     BpmnJsonConverterUtil.convertSignalDefinitionsToJson(model, propertiesNode);
+    BpmnJsonConverterUtil.convertErrorDefinitionsToJson(model, propertiesNode);
     BpmnJsonConverterUtil.convertMessagesToJson(model, propertiesNode);
 
     if (CollectionUtils.isNotEmpty(mainProcess.getDataObjects())) {

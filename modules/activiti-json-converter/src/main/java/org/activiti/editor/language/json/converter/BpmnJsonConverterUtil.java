@@ -262,6 +262,20 @@ public class BpmnJsonConverterUtil implements EditorJsonConstants, StencilConsta
     }
   }
   
+  public static void convertErrorDefinitionsToJson(BpmnModel bpmnModel, ObjectNode propertiesNode) {
+    if (bpmnModel.getErrors() != null) {
+      ArrayNode errorDefinitions = objectMapper.createArrayNode();
+      for (String errorKey : bpmnModel.getErrors().keySet()) {
+      	String errorName = bpmnModel.getErrors().get(errorKey);
+        ObjectNode errorNode = errorDefinitions.addObject();
+        errorNode.put(PROPERTY_SIGNAL_DEFINITION_ID, errorKey);
+        errorNode.put(PROPERTY_SIGNAL_DEFINITION_NAME, errorName);
+      }
+      propertiesNode.set("errordefinitions", errorDefinitions);
+    }
+  }
+  
+  
   public static void convertMessagesToJson(BpmnModel bpmnModel, ObjectNode propertiesNode) {
     if (bpmnModel.getMessages() != null) {
       ArrayNode messageDefinitions = objectMapper.createArrayNode();
