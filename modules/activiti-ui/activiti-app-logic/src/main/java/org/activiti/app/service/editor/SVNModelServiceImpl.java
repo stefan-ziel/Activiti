@@ -125,8 +125,10 @@ public class SVNModelServiceImpl extends FileSystemModelServiceImpl {
 			log = svnExecute(null, "info", pFile, "--xml"); //$NON-NLS-1$ //$NON-NLS-2$
 			if (log != null && log.startsWith("<?xml")) { //$NON-NLS-1$
 				parse(log, handler);
-				handler.version.setVersion(handler.version.getVersion() + 1);
-				return handler.version;
+				if(handler.version != null){
+					handler.version.setVersion(handler.version.getVersion() + 1);
+					return handler.version;
+				}
 			}
 		}
 		catch (IOException e) {
