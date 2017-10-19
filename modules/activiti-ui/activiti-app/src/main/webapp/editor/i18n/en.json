@@ -23,6 +23,7 @@
             "HISTORY": "History"
         },
         "ACTION": {
+            "ABOUT": "About...",
             "LOGOUT": "Sign out",
             "RETURN-TO-LIST": "Show all definitions",
             "CANCEL": "Cancel",
@@ -430,6 +431,18 @@
         }
     },
 
+    "TEMPLATE": {
+      "GROUP": "Stencil group",
+      "NAME": "Template name",
+      "KEY": "Template key",
+      "DESCRIPTION": "Description",
+      "POPUP": {
+          "CREATE-DESCRIPTION": "You need to give a name for the new template and you may want to add a description at the same time.",
+          "SAVE-FORM-TITLE": "Save template"
+      }
+    },
+
+
     "DECISION-TABLE": {
         "NAME": "Decision Table name",
         "KEY": "Decision Table key",
@@ -826,7 +839,6 @@
             "HEADER-NAME" : "Property name",
             "PLACEHOLDER-NAME" : "Enter a property name",
             "HEADER-TYPE": "Property type",
-            "REQUIRED" : "Required",
             "EDITABLE" : "Editable",
             "SORTABLE" : "Sortable",
             "VISIBLE" : "Show in table",
@@ -1572,6 +1584,7 @@
     "APP_DEFINITION_TOOLBAR.ACTION.HELP" : "Start the guided tour",
     "APP_DEFINITION_TOOLBAR.ACTION.FEEDBACK" : "Provide feedback",
 
+    "BUTTON.ACTION.STORE.TOOLTIP": "Store the element as a template",
     "BUTTON.ACTION.DELETE.TOOLTIP": "Delete the element from the model",
     "BUTTON.ACTION.MORPH.TOOLTIP": "Change the element type",
 
@@ -1648,6 +1661,7 @@
     "PROPERTY.FIELDS.STRING.PLACEHOLDER" : "Enter a string",
     "PROPERTY.FIELDS.IMPLEMENTATION" : "Implementation",
     "PROPERTY.FIELDS.UNSELECTED" : "No Field selected",
+    "PROPERTY.FIELDS.MANDATORY" : "Mandatory",
 
     "PROPERTY.FORMPROPERTIES.VALUE" : "{{length}} form properties",
     "PROPERTY.FORMPROPERTIES.EMPTY" : "No form properties selected",

@@ -14,6 +14,10 @@ var KISBPM = KISBPM || {};
 
 KISBPM.URL = {
 
+    getModels: function(modelType) {
+      return ACTIVITI.CONFIG.contextRoot + '/app/rest/models?modelType=' + modelType + '&sort=modifiedDesc';
+    },
+
     getModel: function(modelId) {
         return ACTIVITI.CONFIG.contextRoot + '/app/rest/models/' + modelId + '/editor/json?version=' + Date.now();
     },

@@ -80,6 +80,13 @@
             	    <img src="editor-app/images/wrench.png"/>
             	</div>
             	<div class="Oryx_button"
+            	     id="store-button"
+            	     title="{{'BUTTON.ACTION.STORE.TOOLTIP' | translate}}"
+            	     ng-click="storeShape()"
+            	     style="display:none">
+            	    <img src="editor-app/images/save.png"/>
+            	</div>
+            	<div class="Oryx_button"
             		 ng-repeat="item in quickMenuItems"
 	                 id="{{item.id}}"
 	                 title="{{item.description | translate}}"

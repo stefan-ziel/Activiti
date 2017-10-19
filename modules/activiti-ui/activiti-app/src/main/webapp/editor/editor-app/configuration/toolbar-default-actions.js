@@ -464,3 +464,173 @@ angular.module('activitiModeler').controller('SaveModelCtrl', [ '$rootScope', '$
     };
 
 }]);
+
+angular.module('activitiModeler').controller('SaveTemplateCtrl', [ '$rootScope', '$scope', '$http', '$route', '$location',
+    function ($rootScope, $scope, $http, $route, $location) {
+
+    var templateToSave = $scope.editor.selection[0];
+
+    var saveDialog = { 
+        name : templateToSave.properties["oryx-name"],
+        key : templateToSave.properties["oryx-overrideid"],
+        description : templateToSave.properties["oryx-documentation"],
+        group : "Templates",
+        newVersion : false,
+        comment : ''
+    };
+    
+    $scope.saveDialog = saveDialog;
+    
+    $scope.json = {
+      stencilId : templateToSave.getStencil().idWithoutNs(),
+      properties : {}
+    };
+    
+    for (var attrname in templateToSave.properties) {
+      var value = templateToSave.properties[attrname];
+      if(value){
+        var name = attrname.substring(5);
+        if(name != "overrideid" && value ){
+          $scope.json.properties[name] = value; 
+        }
+      }
+    }
+
+    $scope.status = {
+        loading: false
+    };
+
+    $scope.close = function () {
+    	$scope.$hide();
+    };
+
+    $scope.save = function (successCallback) {
+
+        if (!$scope.saveDialog.name || $scope.saveDialog.name.length == 0 ||
+        	!$scope.saveDialog.key || $scope.saveDialog.key.length == 0) {
+            return;
+        }
+
+        // Indicator spinner image
+        $scope.status = {
+        	loading: true
+        };
+                
+        var params = {
+          filterText: $scope.saveDialog.key,
+          modelType: 1
+        };
+
+        $http({method: 'GET', url: ACTIVITI.CONFIG.contextRoot + '/app/rest/models', params: params})
+          .success(function(data, status, headers, config) {
+            $scope.status.loading = false;
+            if(data.size == 0){
+
+              var params = {
+                name: $scope.saveDialog.name,
+                key: $scope.saveDialog.key,
+                description: $scope.saveDialog.description,
+                modelType: 1
+              }
+
+              $http({method: 'POST', url: ACTIVITI.CONFIG.contextRoot + '/app/rest/models', data: params}).
+                success(function(data) {
+                  $scope.saveWithModel(data,successCallback);
+                }).
+                error(function(data, status, headers, config) {
+                    $scope.status.loading = false;
+                    $scope.saveDialog.errorMessage = data.message;
+                });
+            } else {
+            	var modelDefinition = data.data[0];
+            	$scope.saveWithModel(modelDefinition,successCallback);
+            }
+          })
+
+          .error(function(data, status, headers, config) {
+              $scope.status.loading = false;
+              $scope.saveDialog.errorMessage = data.message;
+          });
+    }
+
+    $scope.saveWithModel = function (modelDefinition, successCallback) {
+
+        $scope.json.group = $scope.saveDialog.group;
+        
+        var _array_tojson = Array.prototype.toJSON;
+        delete Array.prototype.toJSON;
+        var jsonxml = JSON.stringify($scope.json);
+        Array.prototype.toJSON = _array_tojson;
+        
+        var params = {
+            modeltype: 1,
+            json_xml: jsonxml,
+            name: $scope.saveDialog.name,
+            key: $scope.saveDialog.key,
+            description: $scope.saveDialog.description,
+            newversion: $scope.saveDialog.newVersion,
+            comment: $scope.saveDialog.comment,
+            lastUpdated: modelDefinition.lastUpdated
+        };
+
+        // Update
+        $http({method: 'POST',
+            data: params,
+            ignoreErrors: true,
+            headers: {'Accept': 'application/json',
+                      'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8'},
+            transformRequest: function (obj) {
+                var str = [];
+                for (var p in obj) {
+                    str.push(encodeURIComponent(p) + "=" + encodeURIComponent(obj[p]));
+                }
+                return str.join("&");
+            },
+            url: KISBPM.URL.putModel(modelDefinition.id)})
+
+            .success(function (data, status, headers, config) {
+                $scope.status.loading = false;
+                $scope.$hide();
+                // Execute any callback
+                if (successCallback) {
+                    successCallback();
+                }
+            })
+            
+            .error(function (data, status, headers, config) {
+                $scope.saveDialog.errorMessage = data.message;
+                $scope.status.loading = false;
+            });
+    };
+
+    $scope.isOkButtonDisabled = function() {
+        if ($scope.status.loading) {
+            return false;
+        } else if ($scope.error && $scope.error.conflictResolveAction) {
+            if ($scope.error.conflictResolveAction === 'saveAs') {
+                return !$scope.error.saveAs || $scope.error.saveAs.length == 0;
+            } else {
+                return false;
+            }
+        }
+        return true;
+    };
+
+    $scope.okClicked = function() {
+        if ($scope.error) {
+            if ($scope.error.conflictResolveAction === 'discardChanges') {
+                $scope.close();
+                $route.reload();
+            } else if ($scope.error.conflictResolveAction === 'overwrite'
+                || $scope.error.conflictResolveAction === 'newVersion') {
+                $scope.save();
+            } else if($scope.error.conflictResolveAction === 'saveAs') {
+                $scope.save(function() {
+                    $rootScope.ignoreChanges = true;  // Otherwise will get pop up that changes are not saved.
+                    $location.path('/templates');
+                });
+            }
+        }
+    };
+
+}]);

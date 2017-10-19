@@ -53,6 +53,7 @@ angular.module('activitiModeler').controller('SaveAppDefinitionCtrl',
         name: $rootScope.currentAppDefinition.name,
         key: $rootScope.currentAppDefinition.key,
         description: description,
+        comment: null,
         publish: false
     };
     
@@ -91,6 +92,10 @@ angular.module('activitiModeler').controller('SaveAppDefinitionCtrl',
         data.appDefinition.name = $scope.saveDialog.name;
         if ($scope.saveDialog.description && $scope.saveDialog.description.length > 0) {
         	data.appDefinition.description = $scope.saveDialog.description;
+        }
+
+        if ($scope.saveDialog.comment ) {
+        	data.comment = $scope.saveDialog.comment;
         }
 
         if (force !== undefined && force !== null && force === true) {

@@ -1,0 +1,51 @@
+
+<div class="modal" ng-controller="SaveTemplateCtrl">
+	<div class="modal-dialog">
+		<div class="modal-content">
+			<div class="modal-header">
+				<h2>{{'TEMPLATE.POPUP.SAVE-FORM-TITLE' | translate}}</h2>
+			</div>
+			<div class="modal-body">
+				<p>{{'TEMPLATE.POPUP.CREATE-DESCRIPTION' | translate}}</p>
+				<div ng-if="saveDialog.errorMessage && saveDialog.errorMessage.length > 0" class="alert error" style="font-size: 14px; margin-top: 20px">
+					<div class="popup-error" style="font-size: 14px">
+						<span class="glyphicon glyphicon-remove-circle"></span> <span>{{saveDialog.errorMessage}}</span>
+					</div>
+				</div>
+				<div class="form-group">
+					<label for="templateGroup">{{'TEMPLATE.GROUP' | translate}}</label> <input ng-disabled="model.loading" type="text" class="form-control" id="templateGroup" ng-model="saveDialog.group" ui-keypress="{13:'ok()'}" auto-focus editor-input-check>
+				</div>
+				<div class="form-group">
+					<label for="templateName">{{'TEMPLATE.NAME' | translate}}</label> <input ng-disabled="model.loading" type="text" class="form-control" id="templateName" ng-model="saveDialog.name" ui-keypress="{13:'ok()'}" auto-focus editor-input-check>
+				</div>
+				<div class="form-group">
+					<label for="templateKey">{{'TEMPLATE.KEY' | translate}}</label> <input ng-disabled="model.loading" type="text" class="form-control" id="templateKey" ng-model="saveDialog.key" editor-input-check>
+				</div>
+				<div class="form-group">
+					<label for="formDescription">{{'TEMPLATE.DESCRIPTION' | translate}}</label>
+					<textarea ng-disabled="model.loading" class="form-control" id="formDescription" rows="5" ng-model="saveDialog.description"></textarea>
+				</div>
+				<div class="checkbox">
+					<label> <input type="checkbox" ng-disabled="status.loading" ng-model="saveDialog.newVersion"> {{'MODEL.SAVE.NEWVERSION' | translate}}
+					</label>
+				</div>
+				<div class="form-group" ng-if="saveDialog.newVersion">
+					<label for="commentTextArea">{{'MODEL.SAVE.COMMENT' | translate}}</label>
+					<textarea id="commentTextArea" class="form-control" ng-model="saveDialog.comment" ng-disabled="status.loading"></textarea>
+				</div>
+			</div>
+
+			<div class="modal-footer">
+				<div class="pull-right">
+					<button class="btn btn-sm btn-default" ng-click="close()" ng-disabled="status.loading" translate>GENERAL.ACTION.CANCEL</button>
+					<button class="btn btn-primary" ng-click="save()" ng-disabled="status.loading || saveDialog.name.length == 0 || saveDialog.key.length == 0" ng-show="!error && !error.isConflict" translate>ACTION.SAVE</button>
+				</div>
+				<div class="loading pull-right" ng-show="status.loading">
+					<div class="l1"></div>
+					<div class="l2"></div>
+					<div class="l2"></div>
+				</div>
+			</div>
+		</div>
+	</div>
+</div>

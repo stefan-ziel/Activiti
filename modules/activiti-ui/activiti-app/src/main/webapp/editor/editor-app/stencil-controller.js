@@ -30,13 +30,11 @@ angular.module('activitiModeler')
             });
         };
 
+            /* Build stencil item list */
+        $scope.stencilItemGroups = [];
+        
         // Code that is dependent on an initialised Editor is wrapped in a promise for the editor
         $scope.editorFactory.promise.then(function () {
-
-            /* Build stencil item list */
-
-            // Build simple json representation of stencil set
-            var stencilItemGroups = [];
 
             // Helper method: find a group in an array
             var findGroup = function (name, groupArray) {
@@ -94,9 +92,9 @@ angular.module('activitiModeler')
 
                         if (currentGroupName !== null && currentGroupName !== undefined && currentGroupName.length > 0) {
 
-                            currentGroup = findGroup(currentGroupName, stencilItemGroups); // Find group in root groups array
+                            currentGroup = findGroup(currentGroupName, $scope.stencilItemGroups); // Find group in root groups array
                             if (currentGroup === null) {
-                                currentGroup = addGroup(currentGroupName, stencilItemGroups);
+                                currentGroup = addGroup(currentGroupName, $scope.stencilItemGroups);
                             }
 
                             // Add all child groups (if any)
@@ -185,20 +183,20 @@ angular.module('activitiModeler')
                     {
                         // It's a root stencil element
                         if (!removed) {
-                            stencilItemGroups.push(stencilItem);
+                        	$scope.stencilItemGroups.push(stencilItem);
                         }
                     }
                 }
                 
-                for (var i = 0; i < stencilItemGroups.length; i++) 
+                for (var i = 0; i < $scope.stencilItemGroups.length; i++) 
                 {
-                  if (stencilItemGroups[i].paletteItems && stencilItemGroups[i].paletteItems.length == 0)
+                  if ($scope.stencilItemGroups[i].paletteItems && $scope.stencilItemGroups[i].paletteItems.length == 0)
                   {
-                    stencilItemGroups[i].visible = false;
+                  	$scope.stencilItemGroups[i].visible = false;
                   }
                 }
                 
-                $scope.stencilItemGroups = stencilItemGroups;
+                
 
                 var containmentRules = [];
                 for (var i = 0; i < data.rules.containmentRules.length; i++) 
@@ -219,6 +217,7 @@ angular.module('activitiModeler')
                 
                 $scope.quickMenuItems = availableQuickMenuItems;
                 $scope.morphRoles = morphRoles;
+                $scope.loadTemplates();
             }).
             
             error(function (data, status, headers, config) {
@@ -436,7 +435,7 @@ angular.module('activitiModeler')
                 
                 var morphButton = document.getElementById('morph-button');
                 morphButton.style.display = "block";
-                morphButton.style.left = x + 24 +'px';
+                morphButton.style.left = x + 48 +'px';
                 morphButton.style.top = (shapeXY.y+bounds.height() + 2) + 'px';
               }
               
@@ -445,13 +444,19 @@ angular.module('activitiModeler')
               deleteButton.style.left = x + 'px';
               deleteButton.style.top = (shapeXY.y+bounds.height() + 2) + 'px';
               
+              var storeButton = document.getElementById('store-button');
+              storeButton.style.display = "block";
+              storeButton.style.left = x + 24 + 'px';
+              storeButton.style.top = (shapeXY.y+bounds.height() + 2) + 'px';
+
+              
               if (stencilItem && (stencilItem.canConnect || stencilItem.canConnectAssociation))
               {
                 var quickButtonCounter = 0;
                 var quickButtonX = shapeXY.x+bounds.width() + 5;
                 var quickButtonY = shapeXY.y;
                 jQuery('.Oryx_button').each(function(i, obj) {
-                  if (obj.id !== 'morph-button' && obj.id != 'delete-button')
+                  if (obj.id !== 'morph-button' && obj.id != 'delete-button' && obj.id != 'store-button')
                   {
                     quickButtonCounter++;
                     if (quickButtonCounter > 3)
@@ -558,6 +563,62 @@ angular.module('activitiModeler')
             $scope.deleteShape = function() {
               KISBPM.TOOLBAR.ACTIONS.deleteItem({'$scope': $scope});
             };
+            
+            $scope.storeShape = function() {
+              // Method to open shape select dialog (used later on)
+              var showSaveModelDialog = function()
+              {
+                  _internalCreateModal({
+                      backdrop: false,
+                      keyboard: true,
+                      template: 'editor-app/popups/template-save-model.html?version=' + Date.now()
+                  },  $modal, $scope);
+              };
+              showSaveModelDialog();
+            };
+            
+            $scope.loadTemplates = function () {
+    	        $http({method: 'GET', url: KISBPM.URL.getModels(1)}).success(function (data, status, headers, config) {
+    	          if(data.data.length > 0){
+    	            for (var templateIndex = 0; templateIndex < data.data.length; templateIndex++) {
+    	              $http({method: 'GET', url: KISBPM.URL.getModel(data.data[templateIndex].id)}).success(function (data, status, headers, config) {
+    	              	var currentGroupName = data.model.group;
+    	                var currentGroup = findGroup( currentGroupName, $scope.stencilItemGroups); // Find group in root groups array
+    	                if (currentGroup === null) {
+    	                    currentGroup = addGroup( currentGroupName, $scope.stencilItemGroups);
+    	                }
+    	                
+    	                
+    	                if(data.model.icon){
+    	                	var icon = data.model.icon;
+    	                } else {
+    	                	var stencil = $scope.getStencilItemById(data.model.stencilId); 
+    	                	var icon = stencil.icon;
+    	                }
+    	                var stencilItem = {'id': data.modelId,
+    	                      'stencilId': data.model.stencilId,
+    	                      'name': data.name,
+    	                      'description': data.description,
+    	                      'icon': icon,
+    	                      'type': data.model.type,
+    	                      'roles': data.model.roles,
+    	                      'properties': data.model.properties,
+    	                      'removed': false,
+    	                      'customIcon': false,
+    	                      'canConnect': false,
+    	                      'canConnectTo': false,
+    	                      'canConnectAssociation': false};
+    	                currentGroup.items.push(stencilItem);
+    	                currentGroup.paletteItems.push(stencilItem);
+    	              }).error(function (data, status, headers, config) {
+    	                console.log('Something went wrong when reading template item:' + JSON.stringify(data));
+    	              });
+    	            }
+    	          }
+    	        }).error(function (data, status, headers, config) {
+    	           console.log('Something went wrong when reading template items:' + JSON.stringify(data));
+    	        });
+            }
             
             $scope.quickAddItem = function(newItemId) {
               $scope.safeApply(function () {
@@ -771,10 +832,9 @@ angular.module('activitiModeler')
             if ($scope.dragCanContain) {
 
               var item = $scope.getStencilItemById(ui.draggable[0].id);
-              
               var pos = {x: event.pageX, y: event.pageY};
-              
               var additionalIEZoom = 1;
+
                 if (!isNaN(screen.logicalXDPI) && !isNaN(screen.systemXDPI)) {
                     var ua = navigator.userAgent;
                     if (ua.indexOf('MSIE') >= 0) {
@@ -808,10 +868,10 @@ angular.module('activitiModeler')
                 for (var i = 0; i < stencilSets.length; i++)
                 {
                     var stencilSet = stencilSets[i];
-                    var nodes = stencilSet.nodes();
+                  var nodes = stencilSet.stencils();
                     for (var j = 0; j < nodes.length; j++)
                     {
-                        if (nodes[j].idWithoutNs() === ui.draggable[0].id)
+                      if (nodes[j].idWithoutNs() === item.id || nodes[j].idWithoutNs() === item.stencilId )
                         {
                             containedStencil = nodes[j];
                             break;
@@ -892,7 +952,13 @@ angular.module('activitiModeler')
                     }
 
                     var option = {};
+                if(item.stencilId) {
+                	option['type'] = $scope.modelData.model.stencilset.namespace + item.stencilId;
+                } else {
                     option['type'] = $scope.modelData.model.stencilset.namespace + item.id;
+                }
+                option['properties'] = item.properties;
+                    
                     option['namespace'] = $scope.modelData.model.stencilset.namespace;
                     option['position'] = pos;
                     option['parent'] = $scope.dragCurrentParent;
@@ -933,8 +999,65 @@ angular.module('activitiModeler')
                             }
 
                             this.facade.getCanvas().update();
-                            this.facade.updateSelection();
 
+                        if(this.option.properties){
+                        	this.facade.setShapeProperties = function () {
+                            var shape = $scope.editor.getSelection()[0];
+                            for (var attrname in $scope.editor.properties) {
+                              var attrvalue = $scope.editor.properties[attrname];
+                              if( attrvalue && attrvalue.param ) {
+                                attrvalue = $scope.editor.templateParameters[attrname];
+                              } else if (attrvalue instanceof Object) {
+                                attrvalue = jQuery.extend({}, attrvalue);
+                                if(attrvalue.fields){
+                                  for(var i = 0; i < attrvalue.fields.length; i++){
+                                    	var field = attrvalue.fields[i];
+                                    if(field && field.param) {
+                                      field.param = undefined;
+                                      field.stringValue = $scope.editor.templateParameters[field.name];
+                                    }
+                                  }
+                                }
+                              }
+                              shape.properties["oryx-"+attrname] = attrvalue; 
+                            }
+                            $scope.editor.setSelection();
+                            $scope.editor.setSelection(shape);
+                          };
+                          
+                          this.facade.properties = this.option.properties;
+                          this.facade.templateParameters = {};
+                          for (var attrname in this.option.properties) {
+                            var attrvalue = this.option.properties[attrname];
+                            if( attrvalue && attrvalue.param ) {
+                            	this.facade.templateParameters[attrname] = '';
+                            }
+                            if(attrvalue && attrvalue.fields){
+                              for(var i = 0; i < attrvalue.fields.length; i++){
+                              	var field = attrvalue.fields[i];
+                                if(field && field.param) {
+                                	this.facade.templateParameters[field.name] = '';
+                                }
+                              }
+                            }
+                          }
+                          
+                          if(!jQuery.isEmptyObject(this.facade.templateParameters)){
+                            var showTemplateParametersDialog = function()
+                            {
+                                _internalCreateModal({
+                                    backdrop: false,
+                                    keyboard: true,
+                                    template: 'editor-app/popups/template-fields-popup.html?version=' + Date.now(),
+                                }, $modal, $scope);
+                            };
+                            showTemplateParametersDialog();
+                          } else {
+                            this.facade.setSelection(this.shape);
+                            this.facade.setShapeProperties();
+                          }
+                        }
+                        this.facade.updateSelection();
                         },
                         rollback: function(){
                             if (this.shape) {
@@ -971,7 +1094,6 @@ angular.module('activitiModeler')
             $scope.quickMenu = undefined;
             $scope.dropTargetElement = undefined;
         };
-
 
         $scope.overCallback = function (event, ui) {
             $scope.dragModeOver = true;
@@ -1168,14 +1290,14 @@ angular.module('activitiModeler')
                   if (targetStencil)
                   {
                     var associationConnect = false;
-                    if (stencil.idWithoutNs() === 'Association' && (curCan.getStencil().idWithoutNs() === 'TextAnnotation' || curCan.getStencil().idWithoutNs() === 'BoundaryCompensationEvent'))
+                    if (canvasCandidate.getStencil().idWithoutNs() === 'Association' && (canvasCandidate.getStencil().idWithoutNs() === 'TextAnnotation' || canvasCandidate.getStencil().idWithoutNs() === 'BoundaryCompensationEvent'))
                     {
                         associationConnect = true;
                     }
-                            else if (stencil.idWithoutNs() === 'DataAssociation' && curCan.getStencil().idWithoutNs() === 'DataStore')
-                            {
-                                associationConnect = true;
-                            }
+                    else if (canvasCandidate.getStencil().idWithoutNs() === 'DataAssociation' && canvasCandidate.getStencil().idWithoutNs() === 'DataStore')
+                    {
+                           associationConnect = true;
+                    }
                     
                     if (targetStencil.canConnectTo || associationConnect)
                     {
@@ -1352,6 +1474,61 @@ angular.module('activitiModeler')
           color:    isValid ? ORYX.CONFIG.SELECTION_VALID_COLOR : ORYX.CONFIG.SELECTION_INVALID_COLOR
         });
             }
+      };
+    }]);
+
+angular.module('activitiModeler').controller('TemplateFieldsController', ['$rootScope', '$scope', '$q', '$translate', '$timeout', function ($rootScope, $scope, $q, $translate, $timeout) {
+  
+	$scope.fields = [];
+
+  if ($scope.editor.templateParameters) {
+     for(var parName in $scope.editor.templateParameters) {
+       $scope.fields.push({name:parName, value:$scope.editor.templateParameters[parName]});
+     }
+  }
+
+  $scope.translationsRetrieved = false;
+  $scope.labels = {};
+
+  var namePromise = $translate('PROPERTY.FIELDS.NAME');
+  var implementationPromise = $translate('PROPERTY.FIELDS.IMPLEMENTATION');
+
+  $q.all([namePromise, implementationPromise]).then(function (results) {
+      $scope.labels.nameLabel = results[0];
+      $scope.labels.implementationLabel = results[1];
+      $scope.translationsRetrieved = true;
+
+      // Config for grid
+      $scope.gridOptions = {
+          data: $scope.fields,
+          headerRowHeight: 28,
+          enableRowSelection: true,
+          enableRowHeaderSelection: false,
+          multiSelect: false,
+          modifierKeysToMultiSelect: false,
+          enableHorizontalScrollbar: 0,
+          enableColumnMenus: false,
+          enableSorting: false,
+          columnDefs: [{field: 'name', displayName: $scope.labels.nameLabel},
+              {field: 'value', displayName: $scope.labels.implementationLabel}]
+      };
+
+      $scope.gridOptions.onRegisterApi = function (gridApi) {
+          //set gridApi on scope
+          $scope.gridApi = gridApi;
+          gridApi.selection.on.rowSelectionChanged($scope, function (row) {
+              $scope.selectedField = row.entity;
+          });
+      };
+  });
+
+  // Click handler for save button
+  $scope.save = function () {
+    for(var i = 0 ; i < $scope.fields.length; i++) {
+    	$scope.editor.templateParameters[$scope.fields[i].name] = $scope.fields[i].value;
+    }
+    $scope.editor.setShapeProperties();
+    $scope.$hide();
         };
 
     }]);
