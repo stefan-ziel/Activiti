@@ -36,7 +36,7 @@ public class ClanTaskJsonConverter extends BaseBpmnJsonConverter {
 		FieldExtension field;
 		ServiceTask task = new ServiceTask();
 		task.setImplementationType(ImplementationType.IMPLEMENTATION_TYPE_CLASS);
-		task.setImplementation("br.com.claninfo.wf.BoMethod"); //$NON-NLS-1$
+		task.setImplementation("ch.claninfo.activiti.BoMethod"); //$NON-NLS-1$
 		String value = getPropertyValueAsString("clantaskmethod", elementNode); //$NON-NLS-1$
 		if (StringUtils.isNotEmpty(value)) {
 			int pos1 = value.indexOf('.');

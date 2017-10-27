@@ -87,7 +87,9 @@ public class ServiceTaskJsonConverter extends BaseBpmnJsonConverter implements D
           decisionReferenceNode.put("key", modelInfo.getKey());
         }
       }
-		} else if (ImplementationType.IMPLEMENTATION_TYPE_CLASS.equals(serviceTask.getImplementationType()) && "br.com.claninfo.wf.BoMethod".equals(serviceTask.getImplementation())) { //$NON-NLS-1$
+		} else if (ImplementationType.IMPLEMENTATION_TYPE_CLASS.equals(serviceTask.getImplementationType()) && //
+			  ( "br.com.claninfo.wf.BoMethod".equals(serviceTask.getImplementation()) || //$NON-NLS-1$
+			    "ch.claninfo.activiti.BoMethod".equals(serviceTask.getImplementation()))) { //$NON-NLS-1$
 			String modul = null;
 			String bo = null;
 			String method = null;

@@ -100,7 +100,9 @@ public abstract class BaseBpmnJsonConverter implements EditorJsonConstants, Sten
         stencilId = STENCIL_TASK_MULE;
       } else if ("dmn".equalsIgnoreCase(serviceTask.getType())) {
         stencilId = STENCIL_TASK_DECISION;
-			} else if (ImplementationType.IMPLEMENTATION_TYPE_CLASS.equals(serviceTask.getImplementationType()) && "br.com.claninfo.wf.BoMethod".equals(serviceTask.getImplementation())) {
+			} else if (ImplementationType.IMPLEMENTATION_TYPE_CLASS.equals(serviceTask.getImplementationType()) && // 
+					( "br.com.claninfo.wf.BoMethod".equals(serviceTask.getImplementation()) ||//
+					  "ch.claninfo.activiti.BoMethod".equals(serviceTask.getImplementation()))) {
 				stencilId = "ClanTask";
       } else {
         stencilId = getStencilId(baseElement);
