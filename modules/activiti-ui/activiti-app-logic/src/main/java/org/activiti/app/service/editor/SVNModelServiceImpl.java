@@ -122,7 +122,7 @@ public class SVNModelServiceImpl extends FileSystemModelServiceImpl {
 		String log = null;
 		try {
 			SVNLogHandler handler = new SVNLogHandler(null, null, null);
-			log = svnExecute(null, "info", pFile, "--xml"); //$NON-NLS-1$ //$NON-NLS-2$
+			log = svnExecute(null, "info", true, pFile, "--xml"); //$NON-NLS-1$ //$NON-NLS-2$
 			if (log != null && log.startsWith("<?xml")) { //$NON-NLS-1$
 				parse(log, handler);
 				if(handler.version != null){
@@ -167,7 +167,7 @@ public class SVNModelServiceImpl extends FileSystemModelServiceImpl {
 		if (SvnStat.NOT_ADDED.equals(svnStat(pFile))) {
 			res = svnAdd(pFile.getParentFile());
 			if (res == null) {
-				svnExecute(null, "add", pFile); //$NON-NLS-1$
+				svnExecute(null, "add", false, pFile); //$NON-NLS-1$
 				res = pFile;
 			}
 		}
@@ -183,7 +183,7 @@ public class SVNModelServiceImpl extends FileSystemModelServiceImpl {
 	 * @throws IOException
 	 */
 	protected void svnCommit(User pUser, File pFile, String pComment) throws IOException {
-		svnExecute(pUser, "commit", pFile, "--message", pComment); //$NON-NLS-1$ //$NON-NLS-2$
+		svnExecute(pUser, "commit", false, pFile, "--message", pComment); //$NON-NLS-1$ //$NON-NLS-2$
 	}
 
 	/**
@@ -193,7 +193,7 @@ public class SVNModelServiceImpl extends FileSystemModelServiceImpl {
 	 * @throws IOException
 	 */
 	protected void svnDelete(File pFile) throws IOException {
-		svnExecute(null, "delete", pFile); //$NON-NLS-1$
+		svnExecute(null, "delete", false, pFile); //$NON-NLS-1$
 	}
 
 	/**
@@ -201,12 +201,13 @@ public class SVNModelServiceImpl extends FileSystemModelServiceImpl {
 	 * 
 	 * @param pUser user for this operation. may be null
 	 * @param pCommand the svn-command
+	 * @param pIgnoreError ignor any SVN Arrors eg. for files not under version control.
 	 * @param pFile the path
 	 * @param pParams aditional params
 	 * @return console output
 	 * @throws IOException execution error
 	 */
-	protected String svnExecute(User pUser, String pCommand, File pFile, String... pParams) throws IOException {
+	protected String svnExecute(User pUser, String pCommand, boolean pIgnoreError, File pFile, String... pParams) throws IOException {
 		ProcessBuilder procBuilder = new ProcessBuilder();
 		procBuilder.command().add("svn"); //$NON-NLS-1$
 		procBuilder.command().add(pCommand);
@@ -229,6 +230,9 @@ public class SVNModelServiceImpl extends FileSystemModelServiceImpl {
 			errorBuffer.start();
 			int exitCode = proc.waitFor();
 			if (exitCode != 0) {
+				if(pIgnoreError) {
+					return ""; //$NON-NLS-1$
+				}
 				while (errorBuffer.isAlive()) {
 					// busy waiting for a few millies just to be sure all bytes are read.
 				}
@@ -261,15 +265,17 @@ public class SVNModelServiceImpl extends FileSystemModelServiceImpl {
 		List<ModelHistory> res = new ArrayList<>();
 		String log;
 		if (pRevision == null && pKey == null) {
-			log = svnExecute(pUser, "log", getTypeDir(pModelType), "-v", "--xml"); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
+			log = svnExecute(pUser, "log", true, getTypeDir(pModelType), "-v", "--xml"); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
 		} else if (pKey == null) {
-			log = svnExecute(pUser, "log", getTypeDir(pModelType), "-r", pRevision, "-v", "--xml"); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$ //$NON-NLS-4$
+			log = svnExecute(pUser, "log", true, getTypeDir(pModelType), "-r", pRevision, "-v", "--xml"); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$ //$NON-NLS-4$
 		} else if (pRevision == null) {
-			log = svnExecute(pUser, "log", getFile(getId(pModelType, pKey)), "--xml"); //$NON-NLS-1$ //$NON-NLS-2$
+			log = svnExecute(pUser, "log", true, getFile(getId(pModelType, pKey)), "--xml"); //$NON-NLS-1$ //$NON-NLS-2$
 		} else {
-			log = svnExecute(pUser, "log", getFile(getId(pModelType, pKey)), "-r", pRevision, "--xml"); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
+			log = svnExecute(pUser, "log", true, getFile(getId(pModelType, pKey)), "-r", pRevision, "--xml"); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
 		}
-		parse(log, new SVNLogHandler(pModelType, pKey, res));
+		if(log != null && !log.isEmpty() && log.startsWith("<?xml")){ //$NON-NLS-1$
+			parse(log, new SVNLogHandler(pModelType, pKey, res));
+		}
 		return res;
 	}
 
@@ -281,7 +287,7 @@ public class SVNModelServiceImpl extends FileSystemModelServiceImpl {
 	 * @throws IOException
 	 */
 	protected SvnStat svnStat(File pFile) throws IOException {
-		String stat = svnExecute(null, "stat", pFile, "--depth", "empty"); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
+		String stat = svnExecute(null, "stat", true, pFile, "--depth", "empty"); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
 		if (stat.length() == 0) {
 			return SvnStat.CLEAN;
 		}
@@ -308,7 +314,7 @@ public class SVNModelServiceImpl extends FileSystemModelServiceImpl {
 			if (list.size() == 0) {
 				throw new InternalServerErrorException("Could not find history for " + pHistoryId); //$NON-NLS-1$
 			}
-			String text = svnExecute(null, "cat", getFile(id), "-r", revision); //$NON-NLS-1$ //$NON-NLS-2$
+			String text = svnExecute(null, "cat", false, getFile(id), "-r", revision); //$NON-NLS-1$ //$NON-NLS-2$
 			Model model = loadModel(getModelType(id), getModelKey(id), list.get(0), new StringReader(text));
 			return createNewModelhistory(model);
 
