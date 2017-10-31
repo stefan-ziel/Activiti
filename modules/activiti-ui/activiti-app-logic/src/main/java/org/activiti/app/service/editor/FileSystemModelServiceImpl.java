@@ -16,6 +16,7 @@ import java.io.FileOutputStream;
 import java.io.FilenameFilter;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.io.OutputStreamWriter;
 import java.io.Reader;
 import java.text.ParseException;
 import java.util.ArrayList;
@@ -210,7 +211,7 @@ public class FileSystemModelServiceImpl implements ModelService {
 	public Model getModel(String pModelId) {
 		try {
 			File file = getFile(pModelId);
-			InputStreamReader is = new InputStreamReader(new FileInputStream(file));
+			InputStreamReader is = new InputStreamReader(new FileInputStream(file),getEncoding());
 			try {
 				return loadModel(getModelType(pModelId), getModelKey(pModelId), getVersion(file), is);
 			}
@@ -267,32 +268,32 @@ public class FileSystemModelServiceImpl implements ModelService {
 
 	@Override
 	public List<Model> getModelsByModelType(Integer pModelType, String pFilter) {
-			final String filter = pFilter == null ? null : pFilter.replace("%", ""); //$NON-NLS-1$ //$NON-NLS-2$
-			String typeName = MODEL_TYPE_DIR[pModelType == null ? 0 : pModelType.intValue()];
-			File typeDir = new File(rootDir, typeName);
-			ArrayList<Model> res = new ArrayList<>();
-			if (typeDir.isDirectory()) {
-				File[] files = typeDir.listFiles(new FilenameFilter() {
+		final String filter = pFilter == null ? null : pFilter.replace("%", ""); //$NON-NLS-1$ //$NON-NLS-2$
+		String typeName = MODEL_TYPE_DIR[pModelType == null ? 0 : pModelType.intValue()];
+		File typeDir = new File(rootDir, typeName);
+		ArrayList<Model> res = new ArrayList<>();
+		if (typeDir.isDirectory()) {
+			File[] files = typeDir.listFiles(new FilenameFilter() {
 
-					@Override
-					public boolean accept(File pDir, String pName) {
-						return pName.endsWith(EXTENSION) && (filter == null || pName.toLowerCase().indexOf(filter) >= 0);
-					}
+				@Override
+				public boolean accept(File pDir, String pName) {
+					return pName.endsWith(EXTENSION) && (filter == null || pName.toLowerCase().indexOf(filter) >= 0);
+				}
 
-				});
+			});
 
-				for (File file : files) {
-					String id = getId(file);
-					try {
-						res.add(loadModel(getModelType(id), getModelKey(id), getVersion(file), new InputStreamReader(new FileInputStream(file))));
-					}
-					catch (Throwable e) {
-						LOGGER.warn("Unable to load model file "+id,e); //$NON-NLS-1$
-					}
+			for (File file : files) {
+				String id = getId(file);
+				try {
+					res.add(loadModel(getModelType(id), getModelKey(id), getVersion(file), new InputStreamReader(new FileInputStream(file),getEncoding())));
+				}
+				catch (Throwable e) {
+					LOGGER.warn("Unable to load model file " + id, e); //$NON-NLS-1$
 				}
 			}
+		}
 
-			return res;
+		return res;
 	}
 
 	@Override
@@ -567,7 +568,7 @@ public class FileSystemModelServiceImpl implements ModelService {
 			}
 
 			file.getParentFile().mkdirs();
-			FileOutputStream os = new FileOutputStream(file);
+			OutputStreamWriter os = new OutputStreamWriter(new FileOutputStream(file), getEncoding());
 			try {
 				objectMapper.writerWithDefaultPrettyPrinter().writeValue(os, modelJson);
 			}
@@ -578,6 +579,13 @@ public class FileSystemModelServiceImpl implements ModelService {
 		catch (IOException e) {
 			throw new InternalServerErrorException("unable to stoe model " + getId(pModel)); //$NON-NLS-1$
 		}
+	}
+
+	/**
+	 * @return may be we want a different encoding
+	 */
+	protected String getEncoding() {
+		return "UTF-8"; //$NON-NLS-1$
 	}
 
 	Date getDateValue(ObjectNode pJsonObject, String pName) throws IOException {
@@ -598,7 +606,7 @@ public class FileSystemModelServiceImpl implements ModelService {
 	}
 
 	String getId(AbstractModel pModel) {
-		if(pModel.getId() == null){
+		if (pModel.getId() == null) {
 			if (pModel.getKey() == null) {
 				throw new InternalServerErrorException("Model must have a valid key"); //$NON-NLS-1$
 			}
@@ -637,7 +645,14 @@ public class FileSystemModelServiceImpl implements ModelService {
 	}
 
 	ObjectNode loadJson(String pModelId) throws IOException {
-		ObjectNode modelNode = (ObjectNode) objectMapper.readTree(getFile(pModelId));
+		ObjectNode modelNode;
+		InputStreamReader is = new InputStreamReader(new FileInputStream(getFile(pModelId)), getEncoding());
+		try {
+			modelNode = (ObjectNode) objectMapper.readTree(is);
+		}
+		finally {
+			is.close();
+		}
 		return (ObjectNode) modelNode.get("modelEditorJson"); //$NON-NLS-1$
 	}
 
