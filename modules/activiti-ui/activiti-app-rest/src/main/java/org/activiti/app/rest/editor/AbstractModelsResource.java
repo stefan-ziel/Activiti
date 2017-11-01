@@ -28,7 +28,6 @@ import org.activiti.app.domain.editor.Model;
 import org.activiti.app.model.common.ResultListDataRepresentation;
 import org.activiti.app.model.editor.AppDefinitionListModelRepresentation;
 import org.activiti.app.model.editor.ModelRepresentation;
-import org.activiti.app.repository.editor.ModelRepository;
 import org.activiti.app.security.SecurityUtils;
 import org.activiti.app.service.api.ModelService;
 import org.activiti.app.service.exception.BadRequestException;

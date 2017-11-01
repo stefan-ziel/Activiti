@@ -51,6 +51,25 @@ public class SVNModelServiceImpl extends FileSystemModelServiceImpl {
 		super(pSvnRootDir);
 	}
 
+	/**
+	 * @return svn is installed
+	 */
+	public static boolean isInstalled(){
+		ProcessBuilder procBuilder = new ProcessBuilder();
+		procBuilder.command().add("svn"); //$NON-NLS-1$
+		procBuilder.command().add("--version"); //$NON-NLS-1$
+		if (LOGGER.isDebugEnabled()) {
+			LOGGER.debug(procBuilder.command().toString());
+		}
+		try {
+			Process proc = procBuilder.start();
+			return proc.waitFor() == 0;
+		}
+		catch (IOException | InterruptedException e) {
+			return false;
+		}
+	}
+
 	@Override
 	public List<ModelHistory> getModelHistory(Model pModel) {
 		try {
@@ -195,7 +214,7 @@ public class SVNModelServiceImpl extends FileSystemModelServiceImpl {
 	protected void svnDelete(File pFile) throws IOException {
 		svnExecute(null, "delete", false, pFile); //$NON-NLS-1$
 	}
-
+	
 	/**
 	 * execute a svn commandline and return the console output
 	 * 

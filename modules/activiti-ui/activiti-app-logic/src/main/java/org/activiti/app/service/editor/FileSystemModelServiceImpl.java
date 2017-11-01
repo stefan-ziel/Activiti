@@ -48,6 +48,7 @@ import org.activiti.engine.identity.User;
 import org.apache.commons.codec.binary.Base64;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.log4j.Logger;
+import org.springframework.beans.factory.annotation.Configurable;
 import org.springframework.data.domain.Sort;
 
 import com.fasterxml.jackson.databind.JsonNode;
@@ -58,6 +59,7 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
  * A Model service that stores all information in the file system starting from
  * a root directory. No history is provided.
  */
+@Configurable
 public class FileSystemModelServiceImpl implements ModelService {
 
 	/** default extension */
