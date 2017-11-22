@@ -69,6 +69,8 @@ public class FileSystemModelServiceImpl implements ModelService {
 	private static final String ID = "id"; //$NON-NLS-1$
 	private static final Logger LOGGER = Logger.getLogger(FileSystemModelServiceImpl.class);
 
+	String encoding = "UTF-8"; //$NON-NLS-1$
+
 	File rootDir;
 
 	@Inject
@@ -359,6 +361,13 @@ public class FileSystemModelServiceImpl implements ModelService {
 		return internalSave(name, key, description, editorJson, newVersion, newVersionComment, null, updatedBy, modelObject);
 	}
 
+	/**
+	 * @param pEncoding the encoding to set
+	 */
+	public void setEncoding(String pEncoding) {
+		encoding = pEncoding;
+	}
+
 	@Override
 	public ModelKeyRepresentation validateModelKey(Model pModel, Integer pModelType, String pKey) {
 		try {
@@ -410,6 +419,13 @@ public class FileSystemModelServiceImpl implements ModelService {
 	 */
 	protected void deleteFile(User pUser, File pFile, String pComment) throws IOException {
 		pFile.delete();
+	}
+
+	/**
+	 * @return may be we want a different encoding
+	 */
+	protected String getEncoding() {
+		return encoding;
 	}
 
 	/**
@@ -531,7 +547,8 @@ public class FileSystemModelServiceImpl implements ModelService {
 		newModel.setCreated(getDateValue(modelNode, "created")); //$NON-NLS-1$
 		return newModel;
 	}
-
+	
+		
 	/**
 	 * @param pModel The Model
 	 * @param pNewVersion Create new Repository version
@@ -581,13 +598,6 @@ public class FileSystemModelServiceImpl implements ModelService {
 		catch (IOException e) {
 			throw new InternalServerErrorException("unable to stoe model " + getId(pModel)); //$NON-NLS-1$
 		}
-	}
-
-	/**
-	 * @return may be we want a different encoding
-	 */
-	protected String getEncoding() {
-		return "UTF-8"; //$NON-NLS-1$
 	}
 
 	Date getDateValue(ObjectNode pJsonObject, String pName) throws IOException {
