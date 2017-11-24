@@ -100,7 +100,7 @@ public class ClassPathModelServiceImpl extends InMemoryModelServiceImpl {
 										for (File child : dir.listFiles()) {
 											String name = child.getName();
 											if (child.isFile() && name.endsWith(EXTENSION)) {
-												loadModel(child.getAbsolutePath(), new FileInputStream(child), encoding);
+												loadModel(child.getAbsolutePath().replace('\\','/'), new FileInputStream(child), encoding);
 											}
 										}
 									}
