@@ -23,13 +23,22 @@ public class FormContainer extends FormField {
 
   private static final long serialVersionUID = 1L;
 
-  protected List<List<FormField>> fields = new ArrayList<List<FormField>>();
+  protected List<FormField> fields = new ArrayList<FormField>();
+  protected Integer columns;
 
-  public List<List<FormField>> getFields() {
+  public List<FormField> getFields() {
     return fields;
   }
 
-  public void setFields(List<List<FormField>> fields) {
+  public void setFields(List<FormField> fields) {
     this.fields = fields;
+  }
+
+  public Integer getColumns() {
+    return columns;
+  }
+
+  public void setColumns(Integer pColumns) {
+    columns = pColumns;
   }
 }

@@ -38,8 +38,9 @@ public class FormDefinition implements Serializable {
   protected List<FormField> fields;
   protected List<FormOutcome> outcomes;
   protected String outcomeVariableName;
+  protected Integer columns;
 
-  public String getId() {
+	public String getId() {
     return id;
   }
 
@@ -109,6 +110,13 @@ public class FormDefinition implements Serializable {
     this.outcomeVariableName = outcomeVariableName;
   }
 
+  public Integer getColumns() {
+    return columns;
+  }
+
+  public void setColumns(Integer pColumns) {
+    columns = pColumns;
+  }
   /*
    * Helper methods
    */
@@ -138,13 +146,9 @@ public class FormDefinition implements Serializable {
         listOfAllFields.add(field);
         if (field instanceof FormContainer) {
           FormContainer container = (FormContainer) field;
-          List<List<FormField>> subFields = container.getFields();
+          List<FormField> subFields = container.getFields();
           if (subFields != null) {
-            for (List<FormField> subFieldDefinitions : subFields) {
-              if (subFieldDefinitions != null) {
-                collectSubFields(subFieldDefinitions, listOfAllFields);
-              }
-            }
+            collectSubFields(subFields, listOfAllFields);
           }
         }
       }
