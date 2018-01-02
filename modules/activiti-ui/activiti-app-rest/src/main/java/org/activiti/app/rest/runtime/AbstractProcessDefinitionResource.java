@@ -112,7 +112,7 @@ public abstract class AbstractProcessDefinitionResource {
     }
     String fieldVariable = requestInfoArray[paramPosition];
 
-    List<? extends FormField> allFields = form.listAllFields();
+    List<? extends FormField> allFields = form.getFields();
     FormField selectedField = null;
     if (CollectionUtils.isNotEmpty(allFields)) {
       for (FormField formFieldRepresentation : allFields) {

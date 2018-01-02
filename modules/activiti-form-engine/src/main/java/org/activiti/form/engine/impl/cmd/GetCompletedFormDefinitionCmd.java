@@ -106,7 +106,7 @@ public class GetCompletedFormDefinitionCmd implements Command<CompletedFormDefin
 	protected void fillFormFieldValues(SubmittedForm submittedForm, CompletedFormDefinition formDefinition, CommandContext commandContext) {
 
 		FormEngineConfiguration formEngineConfiguration = commandContext.getFormEngineConfiguration();
-		List<FormField> allFields = formDefinition.listAllFields();
+		List<FormField> allFields = formDefinition.getFields();
 		if (allFields != null) {
 
 			Map<String, JsonNode> submittedFormFieldMap = fillPreviousFormValues(submittedForm, formEngineConfiguration);

@@ -122,7 +122,7 @@ public class FormDefinition implements Serializable {
    */
   public Map<String, FormField> allFieldsAsMap() {
     Map<String, FormField> result = new HashMap<String, FormField>();
-    List<FormField> allFields = listAllFields();
+    List<FormField> allFields = getFields();
     if (allFields != null) {
       for (FormField field : allFields) {
         if (result.containsKey(field.getId()) == false || ("readonly".equals(field.getType()) == false && "readonly-text".equals(field.getType()) == false)) {
@@ -132,27 +132,6 @@ public class FormDefinition implements Serializable {
       }
     }
     return result;
-  }
-
-  public List<FormField> listAllFields() {
-    List<FormField> listOfAllFields = new ArrayList<FormField>();
-    collectSubFields(fields, listOfAllFields);
-    return listOfAllFields;
-  }
-
-  protected void collectSubFields(List<FormField> fields, List<FormField> listOfAllFields) {
-    if (fields != null && fields.size() > 0) {
-      for (FormField field : fields) {
-        listOfAllFields.add(field);
-        if (field instanceof FormContainer) {
-          FormContainer container = (FormContainer) field;
-          List<FormField> subFields = container.getFields();
-          if (subFields != null) {
-            collectSubFields(subFields, listOfAllFields);
-          }
-        }
-      }
-    }
   }
 
 }
