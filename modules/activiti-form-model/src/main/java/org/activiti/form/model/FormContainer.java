@@ -25,8 +25,25 @@ public class FormContainer extends FormField {
 
   protected List<FormField> fields = new ArrayList<FormField>();
   protected Integer columns;
+  protected boolean singleRow;
 
-  public List<FormField> getFields() {
+  
+	/**
+	 * @return the singleRow
+	 */
+	public boolean isSingleRow() {
+		return singleRow;
+	}
+
+	
+	/**
+	 * @param pSingleRow the singleRow to set
+	 */
+	public void setSingleRow(boolean pSingleRow) {
+		singleRow = pSingleRow;
+	}
+
+	public List<FormField> getFields() {
     return fields;
   }
 
