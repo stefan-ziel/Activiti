@@ -26,10 +26,12 @@ import org.activiti.bpmn.model.BpmnModel;
 import org.activiti.engine.identity.User;
 import org.springframework.data.domain.Sort;
 
+import com.fasterxml.jackson.databind.node.ObjectNode;
+
 /**
  * A Model service that is based on one or many underlying ModelServices
  */
-public class MultiModelService implements ModelService {
+public class MultiModelService extends AbstractModelService {
 
 	HashMap<String, ModelService> idToServiceMap = new HashMap<>();
 	ArrayList<Integer> loadedModelTypes = new ArrayList<>();
@@ -145,15 +147,6 @@ public class MultiModelService implements ModelService {
 		return res;
 	}
 
-	void addAll(List<Model> pAll,List<Model> pSingle, ModelService pService ){
-		for(Model m : pSingle){
-			if(!idToServiceMap.containsKey(m.getId())){
-				idToServiceMap.put(m.getId(), pService);
-			}
-			pAll.add(m);
-		}
-	}
-	
 	@Override
 	public List<Model> getModelsByModelType(Integer pModelType) {
 		ArrayList<Model> res = new ArrayList<>();
@@ -167,7 +160,7 @@ public class MultiModelService implements ModelService {
 	public List<Model> getModelsByModelType(Integer pModelType, String pFilter) {
 		ArrayList<Model> res = new ArrayList<>();
 		for (ModelService ms : services()) {
-			addAll(res,ms.getModelsByModelType(pModelType, pFilter),ms);
+			addAll(res, ms.getModelsByModelType(pModelType, pFilter), ms);
 		}
 		return res;
 	}
@@ -176,7 +169,7 @@ public class MultiModelService implements ModelService {
 	public List<Model> getModelsForUser(User pUser, Integer pModelType) {
 		ArrayList<Model> res = new ArrayList<>();
 		for (ModelService ms : services()) {
-			addAll(res,ms.getModelsForUser(pUser, pModelType),ms);
+			addAll(res, ms.getModelsForUser(pUser, pModelType), ms);
 		}
 		return res;
 	}
@@ -185,14 +178,19 @@ public class MultiModelService implements ModelService {
 	public List<Model> getModelsForUser(User pUser, Integer pModelType, String pFilter, Sort pSort) {
 		ArrayList<Model> res = new ArrayList<>();
 		for (ModelService ms : services()) {
-			addAll(res,ms.getModelsForUser(pUser, pModelType, pFilter, pSort),ms);
+			addAll(res, ms.getModelsForUser(pUser, pModelType, pFilter, pSort), ms);
 		}
 		return res;
 	}
 
 	@Override
-	public List<Model> getReferencedModels(String pModelId) {
-		return getServiceForModelId(pModelId).getReferencedModels(pModelId);
+	public Integer getModelType(String pModelId) {
+		return getServiceForModelId(pModelId).getModelType(pModelId);
+	}
+
+	@Override
+	public ObjectNode loadJson(String pModelId) {
+		return getServiceForModelId(pModelId).loadJson(pModelId);
 	}
 
 	@Override
@@ -293,6 +291,15 @@ public class MultiModelService implements ModelService {
 	 */
 	protected Iterable<ModelService> services() {
 		return services;
+	}
+
+	void addAll(List<Model> pAll, List<Model> pSingle, ModelService pService) {
+		for (Model m : pSingle) {
+			if (!idToServiceMap.containsKey(m.getId())) {
+				idToServiceMap.put(m.getId(), pService);
+			}
+			pAll.add(m);
+		}
 	}
 
 }

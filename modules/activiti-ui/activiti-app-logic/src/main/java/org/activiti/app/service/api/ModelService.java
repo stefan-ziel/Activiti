@@ -25,6 +25,8 @@ import org.activiti.bpmn.model.BpmnModel;
 import org.activiti.engine.identity.User;
 import org.springframework.data.domain.Sort;
 
+import com.fasterxml.jackson.databind.node.ObjectNode;
+
 public interface ModelService {
 
   Model getModel(String modelId);
@@ -76,4 +78,7 @@ public interface ModelService {
   
   List<ModelHistory> getModelHistoryForUser(User user, Integer modelType );
 
+  Integer getModelType(String pModelId);
+
+  ObjectNode loadJson(String pModelId);
 }

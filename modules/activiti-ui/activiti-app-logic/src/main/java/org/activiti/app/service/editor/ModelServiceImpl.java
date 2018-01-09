@@ -29,23 +29,16 @@ import org.activiti.app.domain.editor.ModelHistory;
 import org.activiti.app.domain.editor.ModelRelation;
 import org.activiti.app.domain.editor.ModelRelationTypes;
 import org.activiti.app.model.editor.ModelKeyRepresentation;
-import org.activiti.app.model.editor.ModelRepresentation;
 import org.activiti.app.model.editor.ReviveModelResultRepresentation;
 import org.activiti.app.model.editor.ReviveModelResultRepresentation.UnresolveModelRepresentation;
 import org.activiti.app.repository.editor.ModelHistoryRepository;
 import org.activiti.app.repository.editor.ModelRelationRepository;
 import org.activiti.app.repository.editor.ModelRepository;
-import org.activiti.app.security.SecurityUtils;
-import org.activiti.app.service.api.DeploymentService;
-import org.activiti.app.service.api.ModelService;
 import org.activiti.app.service.exception.InternalServerErrorException;
 import org.activiti.app.service.exception.NotFoundException;
-import org.activiti.bpmn.converter.BpmnXMLConverter;
 import org.activiti.bpmn.model.BpmnModel;
 import org.activiti.bpmn.model.ExtensionElement;
-import org.activiti.bpmn.model.Process;
 import org.activiti.bpmn.model.UserTask;
-import org.activiti.editor.language.json.converter.BpmnJsonConverter;
 import org.activiti.editor.language.json.converter.util.CollectionUtils;
 import org.activiti.editor.language.json.converter.util.JsonConverterUtil;
 import org.activiti.engine.identity.User;
@@ -54,16 +47,14 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Sort;
-import org.springframework.data.domain.Sort.Direction;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 
 @Service
-public class ModelServiceImpl implements ModelService {
+public class ModelServiceImpl extends AbstractModelService {
 
 
 	private final Logger log = LoggerFactory.getLogger(ModelServiceImpl.class);
@@ -71,12 +62,6 @@ public class ModelServiceImpl implements ModelService {
   public static final String NAMESPACE = "http://activiti.com/modeler";
   
   protected static final String PROCESS_NOT_FOUND_MESSAGE_KEY = "PROCESS.ERROR.NOT-FOUND";
-
-  @Autowired
-  protected DeploymentService deploymentService;
-  
-  @Autowired
-  protected ModelImageService modelImageService;
 
   @Autowired
   protected ModelRepository modelRepository;
@@ -87,13 +72,6 @@ public class ModelServiceImpl implements ModelService {
   @Autowired
   protected ModelRelationRepository modelRelationRepository;
 
-  @Autowired
-  protected ObjectMapper objectMapper;
-
-  protected BpmnJsonConverter bpmnJsonConverter = new BpmnJsonConverter();
-
-  protected BpmnXMLConverter bpmnXMLConverter = new BpmnXMLConverter();
-  
   @Override
   public Model getModel(String modelId) {
     Model model = modelRepository.findOne(modelId);
@@ -156,21 +134,6 @@ public class ModelServiceImpl implements ModelService {
   }
 
   @Override
-  public byte[] getBpmnXML(BpmnModel bpmnModel) {
-    for (Process process : bpmnModel.getProcesses()) {
-      if (StringUtils.isNotEmpty(process.getId())) {
-        char firstCharacter = process.getId().charAt(0);
-        // no digit is allowed as first character
-        if (Character.isDigit(firstCharacter)) {
-          process.setId("a" + process.getId());
-        }
-      }
-    }
-    byte[] xmlBytes = bpmnXMLConverter.convertToXML(bpmnModel);
-    return xmlBytes;
-  }
-  
-  @Override
   public ModelKeyRepresentation validateModelKey(Model model, Integer modelType, String key) {
     ModelKeyRepresentation modelKeyResponse = new ModelKeyRepresentation();
     modelKeyResponse.setKey(key);
@@ -187,39 +150,6 @@ public class ModelServiceImpl implements ModelService {
     
     return modelKeyResponse;
   }
-  
-  @Override
-  @Transactional
-  public Model createModel(Model newModel, User createdBy) {
-    newModel.setVersion(1);
-    newModel.setCreated(Calendar.getInstance().getTime());
-    newModel.setCreatedBy(createdBy.getId());
-    newModel.setLastUpdated(Calendar.getInstance().getTime());
-    newModel.setLastUpdatedBy(createdBy.getId());
-    
-    persistModel(newModel);
-    return newModel;
-  }
-
-  @Override
-  @Transactional
-  public Model createModel(ModelRepresentation model, String editorJson, User createdBy) {
-    Model newModel = new Model();
-    newModel.setVersion(1);
-    newModel.setName(model.getName());
-    newModel.setKey(model.getKey());
-    newModel.setModelType(model.getModelType());
-    newModel.setCreated(Calendar.getInstance().getTime());
-    newModel.setCreatedBy(createdBy.getId());
-    newModel.setDescription(model.getDescription());
-    newModel.setModelEditorJson(editorJson);
-    newModel.setLastUpdated(Calendar.getInstance().getTime());
-    newModel.setLastUpdatedBy(createdBy.getId());
-
-    persistModel(newModel);
-    return newModel;
-  }
-
   @Override
   @Transactional
   public Model createNewModelVersion(Model modelObject, String comment, User updatedBy) {
@@ -483,11 +413,6 @@ public class ModelServiceImpl implements ModelService {
   public Long getModelCountForUser(User user, Integer modelType) {
     return modelRepository.countByModelTypeAndUser(modelType, user.getId());
   }
-  
-  @Override
-  public List<Model> getModelsForUser(User user, Integer modelType){
-    return getModelsForUser(user, modelType, null, new Sort(Direction.ASC, "name")); //$NON-NLS-1$
-  }
 
   @Override
   public List<Model> getModelsForUser(User user, Integer modelType, String filter, Sort sort){
@@ -629,5 +554,27 @@ public class ModelServiceImpl implements ModelService {
     model.setVersion(basedOn.getVersion());
     model.setComment(basedOn.getComment());
   }
+
+	/**
+	 * @param pModelId
+	 * @return
+	 * @see org.activiti.app.service.api.ModelService#getModelType(java.lang.String)
+	 */
+	@Override
+	public Integer getModelType(String pModelId) {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+	/**
+	 * @param pModelId
+	 * @return
+	 * @see org.activiti.app.service.api.ModelService#loadJson(java.lang.String)
+	 */
+	@Override
+	public ObjectNode loadJson(String pModelId) {
+		// TODO Auto-generated method stub
+		return null;
+	}
 
 }

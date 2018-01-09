@@ -187,7 +187,8 @@ public class ClassPathModelServiceImpl extends InMemoryModelServiceImpl {
 	 * @param pModelId model id
 	 * @return the model type
 	 */
-	protected Integer getModelType(String pModelId) {
+	@Override
+	public Integer getModelType(String pModelId) {
 		if (pModelId != null) {
 			int pos = pModelId.indexOf('-');
 			String type = pModelId.substring(1, pos);
