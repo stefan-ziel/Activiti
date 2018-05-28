@@ -12,6 +12,7 @@
  */
 package org.activiti.app.service.editor;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Date;
@@ -555,26 +556,27 @@ public class ModelServiceImpl extends AbstractModelService {
     model.setComment(basedOn.getComment());
   }
 
-	/**
-	 * @param pModelId
-	 * @return
-	 * @see org.activiti.app.service.api.ModelService#getModelType(java.lang.String)
-	 */
 	@Override
 	public Integer getModelType(String pModelId) {
-		// TODO Auto-generated method stub
-		return null;
+		Model model = getModel(pModelId);
+		if(model == null){
+			throw new NullPointerException("Could load model " + pModelId); //$NON-NLS-1$
+		}
+		return model.getModelType();
 	}
 
-	/**
-	 * @param pModelId
-	 * @return
-	 * @see org.activiti.app.service.api.ModelService#loadJson(java.lang.String)
-	 */
 	@Override
 	public ObjectNode loadJson(String pModelId) {
-		// TODO Auto-generated method stub
-		return null;
+		Model model = getModel(pModelId);
+		if(model == null){
+			throw new NullPointerException("Could load model " + pModelId); //$NON-NLS-1$
+		}
+		try {
+			return (ObjectNode) objectMapper.readTree(model.getModelEditorJson());
+		}
+		catch (IOException e) {
+			throw new InternalServerErrorException("Could load model " + pModelId, e); //$NON-NLS-1$
+		}
 	}
 
 }
