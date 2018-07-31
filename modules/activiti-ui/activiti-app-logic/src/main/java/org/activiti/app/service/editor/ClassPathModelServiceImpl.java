@@ -133,7 +133,7 @@ public class ClassPathModelServiceImpl extends InMemoryModelServiceImpl {
 	void loadModel(String pName, InputStream pIn, String pEncoding) throws IOException {
 		InputStreamReader in = new InputStreamReader(pIn, pEncoding);
 		try {
-			ObjectNode modelNode = (ObjectNode) objectMapper.readTree(in);
+			ObjectNode modelNode = (ObjectNode) getObjectMapper().readTree(in);
 			Model newModel = new Model();
 			String id = getId(pName);
 			newModel.setId(id);
@@ -144,7 +144,7 @@ public class ClassPathModelServiceImpl extends InMemoryModelServiceImpl {
 			newModel.setLastUpdated(getDateValue(modelNode, "lastUpdated")); //$NON-NLS-1$
 			newModel.setName(getTextValue(modelNode, "name")); //$NON-NLS-1$
 			newModel.setDescription(getTextValue(modelNode, "description")); //$NON-NLS-1$
-			newModel.setModelEditorJson(objectMapper.writeValueAsString(modelNode.get("modelEditorJson"))); //$NON-NLS-1$
+			newModel.setModelEditorJson(getObjectMapper().writeValueAsString(modelNode.get("modelEditorJson"))); //$NON-NLS-1$
 			String thumbnail = getTextValue(modelNode, "thumbnail"); //$NON-NLS-1$
 			if (thumbnail != null) {
 				newModel.setThumbnail(Base64.decodeBase64(thumbnail));

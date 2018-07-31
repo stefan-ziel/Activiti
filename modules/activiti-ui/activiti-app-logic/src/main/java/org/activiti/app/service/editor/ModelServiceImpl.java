@@ -253,7 +253,7 @@ public class ModelServiceImpl extends AbstractModelService {
     if (deleteRuntimeApp && model.getModelType() == Model.MODEL_TYPE_APP) {
     	String appDefinitionId = modelRepository.appDefinitionIdByModelAndUser(modelId, deletedBy.getId());
       if (appDefinitionId != null) {
-        deploymentService.deleteAppDefinition(appDefinitionId);
+        deleteAppDefinition(appDefinitionId);
       }
     } else {
       // Move model to history and mark removed
@@ -325,7 +325,7 @@ public class ModelServiceImpl extends AbstractModelService {
     if (latestModel.getModelType() == AbstractModel.MODEL_TYPE_APP) {
       if (StringUtils.isNotEmpty(latestModel.getModelEditorJson())) {
         try {
-          AppDefinition appDefinition = objectMapper.readValue(latestModel.getModelEditorJson(), AppDefinition.class);
+          AppDefinition appDefinition = getObjectMapper().readValue(latestModel.getModelEditorJson(), AppDefinition.class);
           for (AppModelDefinition appModelDefinition : appDefinition.getModels()) {
             if (!modelRepository.exists(appModelDefinition.getId())) {
               result.getUnresolvedModels().add(new UnresolveModelRepresentation(appModelDefinition.getId(), 
@@ -371,7 +371,7 @@ public class ModelServiceImpl extends AbstractModelService {
   @Override
   public BpmnModel getBpmnModel(AbstractModel model, Map<String, Model> formMap, Map<String, Model> decisionTableMap) {
     try {
-      ObjectNode editorJsonNode = (ObjectNode) objectMapper.readTree(model.getModelEditorJson());
+      ObjectNode editorJsonNode = (ObjectNode) getObjectMapper().readTree(model.getModelEditorJson());
       Map<String, String> formKeyMap = new HashMap<String, String>();
       for (Model formModel : formMap.values()) {
         formKeyMap.put(formModel.getId(), formModel.getKey());
@@ -433,7 +433,7 @@ public class ModelServiceImpl extends AbstractModelService {
       // Parse json to java
       ObjectNode jsonNode = null;
       try {
-        jsonNode = (ObjectNode) objectMapper.readTree(model.getModelEditorJson());
+        jsonNode = (ObjectNode) getObjectMapper().readTree(model.getModelEditorJson());
       } catch (Exception e) {
         log.error("Could not deserialize json model", e);
         throw new InternalServerErrorException("Could not deserialize json model");
@@ -442,7 +442,7 @@ public class ModelServiceImpl extends AbstractModelService {
       if ((model.getModelType() == null || model.getModelType().intValue() == Model.MODEL_TYPE_BPMN)) {
 
         // Thumbnail
-        modelImageService.generateThumbnailImage(model, jsonNode);
+        generateThumbnailImage(model, jsonNode);
 
         // Relations
         handleBpmnProcessFormModelRelations(model, jsonNode);
@@ -572,7 +572,7 @@ public class ModelServiceImpl extends AbstractModelService {
 			throw new NullPointerException("Could load model " + pModelId); //$NON-NLS-1$
 		}
 		try {
-			return (ObjectNode) objectMapper.readTree(model.getModelEditorJson());
+			return (ObjectNode) getObjectMapper().readTree(model.getModelEditorJson());
 		}
 		catch (IOException e) {
 			throw new InternalServerErrorException("Could load model " + pModelId, e); //$NON-NLS-1$

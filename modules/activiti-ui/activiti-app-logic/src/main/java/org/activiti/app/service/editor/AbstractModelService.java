@@ -53,10 +53,11 @@ public abstract class AbstractModelService implements ModelService {
 	ObjectMapper objectMapper;
 
 	BpmnJsonConverter bpmnJsonConverter = new BpmnJsonConverter();
+
 	BpmnXMLConverter bpmnXMLConverter = new BpmnXMLConverter();
 
 	@Override
-  @Transactional
+	@Transactional
 	public Model createModel(Model pNewModel, User pCreatedBy) {
 		pNewModel.setCreated(new Date());
 		pNewModel.setCreatedBy(pCreatedBy.getId());
@@ -64,7 +65,7 @@ public abstract class AbstractModelService implements ModelService {
 	}
 
 	@Override
-  @Transactional
+	@Transactional
 	public Model createModel(ModelRepresentation pModel, String pEditorJson, User pCreatedBy) {
 		Model newModel = new Model();
 		newModel.setId(pModel.getId());
@@ -100,7 +101,7 @@ public abstract class AbstractModelService implements ModelService {
 				json = getModel(pModel.getId()).getModelEditorJson();
 			}
 
-			editorJsonNode = (ObjectNode) objectMapper.readTree(json);
+			editorJsonNode = (ObjectNode) getObjectMapper().readTree(json);
 
 			List<JsonNode> formReferenceNodes = JsonConverterUtil.filterOutJsonNodes(JsonConverterUtil.getBpmnProcessModelFormReferences(editorJsonNode));
 			Map<String, Model> formMap = new HashMap<String, Model>();
@@ -126,7 +127,7 @@ public abstract class AbstractModelService implements ModelService {
 	@Override
 	public BpmnModel getBpmnModel(AbstractModel pModel, Map<String, Model> pFormMap, Map<String, Model> pDecisionTableMap) {
 		try {
-			ObjectNode editorJsonNode = (ObjectNode) objectMapper.readTree(pModel.getModelEditorJson());
+			ObjectNode editorJsonNode = (ObjectNode) getObjectMapper().readTree(pModel.getModelEditorJson());
 			Map<String, String> formKeyMap = new HashMap<String, String>();
 			for (Model formModel : pFormMap.values()) {
 				formKeyMap.put(formModel.getId(), formModel.getKey());
@@ -165,10 +166,10 @@ public abstract class AbstractModelService implements ModelService {
 		return getModelsByModelType(pModelType, null);
 	}
 
-  @Override
-  public List<Model> getModelsForUser(User user, Integer modelType){
-    return getModelsForUser(user, modelType, null, new Sort(Direction.ASC, "name")); //$NON-NLS-1$
-  }
+	@Override
+	public List<Model> getModelsForUser(User user, Integer modelType) {
+		return getModelsForUser(user, modelType, null, new Sort(Direction.ASC, "name")); //$NON-NLS-1$
+	}
 
 	@Override
 	public List<Model> getModelsForUser(User pUser, Integer pModelType, String pFilter, Sort pSort) {
@@ -232,22 +233,39 @@ public abstract class AbstractModelService implements ModelService {
 		return historyModel;
 	}
 
-	Model internalSave(String name, String key, String description, String editorJson, boolean newVersion, String newVersionComment, byte[] imageBytes, User updatedBy, Model modelObject) {
-		modelObject.setName(name);
-		modelObject.setKey(key);
-		modelObject.setDescription(description);
-		modelObject.setModelEditorJson(editorJson);
-
-		if (imageBytes != null) {
-			modelObject.setThumbnail(imageBytes);
+	/**
+	 * @param appDefinitionId app to delete
+	 */
+	protected void deleteAppDefinition(String appDefinitionId) {
+		if(deploymentService != null){
+			deploymentService.deleteAppDefinition(appDefinitionId);
 		}
-		return saveModel(modelObject);
+	}
+
+	/**
+	 * @param model the model 
+	 * @param editorJsonNode the json representation
+	 */
+	protected void generateThumbnailImage(Model model, ObjectNode editorJsonNode) {
+		if (modelImageService != null) {
+			modelImageService.generateThumbnailImage(model, editorJsonNode);
+		}
+	}
+
+	/**
+	 * @return the object mapper
+	 */
+	public ObjectMapper getObjectMapper() {
+		if(objectMapper == null) {
+			objectMapper = new ObjectMapper();
+		}
+		return objectMapper;
 	}
 
 	Date getDateValue(ObjectNode pJsonObject, String pName) throws IOException {
 		JsonNode jn = pJsonObject.get(pName);
 		try {
-			return jn == null ? null : objectMapper.getDeserializationConfig().getDateFormat().parse(jn.textValue());
+			return jn == null ? null : getObjectMapper().getDeserializationConfig().getDateFormat().parse(jn.textValue());
 		}
 		catch (ParseException e) {
 			throw new IOException("Cound not parse conten of " + pName, e); //$NON-NLS-1$
@@ -262,6 +280,18 @@ public abstract class AbstractModelService implements ModelService {
 	String getTextValue(ObjectNode pJsonObject, String pName) {
 		JsonNode jn = pJsonObject.get(pName);
 		return jn == null ? null : jn.textValue();
+	}
+
+	Model internalSave(String name, String key, String description, String editorJson, boolean newVersion, String newVersionComment, byte[] imageBytes, User updatedBy, Model modelObject) {
+		modelObject.setName(name);
+		modelObject.setKey(key);
+		modelObject.setDescription(description);
+		modelObject.setModelEditorJson(editorJson);
+
+		if (imageBytes != null) {
+			modelObject.setThumbnail(imageBytes);
+		}
+		return saveModel(modelObject);
 	}
 
 	void putTextValue(ObjectNode pJsonObject, String pName, String pValue) {

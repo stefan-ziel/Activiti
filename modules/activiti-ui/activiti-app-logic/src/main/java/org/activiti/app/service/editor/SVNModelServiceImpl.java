@@ -115,7 +115,7 @@ public class SVNModelServiceImpl extends FileSystemModelServiceImpl {
 		if (latestModel.getModelType().intValue() == AbstractModel.MODEL_TYPE_APP) {
 			if (StringUtils.isNotEmpty(latestModel.getModelEditorJson())) {
 				try {
-					AppDefinition appDefinition = objectMapper.readValue(latestModel.getModelEditorJson(), AppDefinition.class);
+					AppDefinition appDefinition = getObjectMapper().readValue(latestModel.getModelEditorJson(), AppDefinition.class);
 					for (AppModelDefinition appModelDefinition : appDefinition.getModels()) {
 						if (!getFile(appModelDefinition.getId()).exists()) {
 							result.getUnresolvedModels().add(new UnresolveModelRepresentation(appModelDefinition.getId(), appModelDefinition.getName(), appModelDefinition.getLastUpdatedBy()));
@@ -406,7 +406,7 @@ public class SVNModelServiceImpl extends FileSystemModelServiceImpl {
 					break;
 				case "date": //$NON-NLS-1$
 					try {
-						version.setLastUpdated(objectMapper.getDeserializationConfig().getDateFormat().parse(endText()));
+						version.setLastUpdated(getObjectMapper().getDeserializationConfig().getDateFormat().parse(endText()));
 					}
 					catch (ParseException e) {
 						throw new SAXException(e);

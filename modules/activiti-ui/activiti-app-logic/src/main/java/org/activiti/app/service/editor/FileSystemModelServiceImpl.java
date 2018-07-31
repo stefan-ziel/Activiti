@@ -87,7 +87,7 @@ public class FileSystemModelServiceImpl extends AbstractHistoryLessModelService 
 			// if the model is an app definition and the runtime app needs to be
 			// deleted, remove it now
 			if (pDeleteRuntimeApp && getModelType(pModelId).intValue() == AbstractModel.MODEL_TYPE_APP) {
-				deploymentService.deleteAppDefinition(getModelKey(pModelId));
+				deleteAppDefinition(getModelKey(pModelId));
 			}
 			deleteFile(pDeletedBy, getFile(pModelId), pComment);
 		}
@@ -315,7 +315,7 @@ public class FileSystemModelServiceImpl extends AbstractHistoryLessModelService 
 	 * @throws ParseException
 	 */
 	protected Model loadModel(Integer pType, String pKey, ModelHistory pVersion, Reader pModelFile) throws IOException {
-		ObjectNode modelNode = (ObjectNode) objectMapper.readTree(pModelFile);
+		ObjectNode modelNode = (ObjectNode) getObjectMapper().readTree(pModelFile);
 		Model newModel = new Model();
 		newModel.setId(getId(pType, pKey));
 		newModel.setKey(pKey);
@@ -326,7 +326,7 @@ public class FileSystemModelServiceImpl extends AbstractHistoryLessModelService 
 		newModel.setComment(pVersion.getComment());
 		newModel.setName(getTextValue(modelNode, "name")); //$NON-NLS-1$
 		newModel.setDescription(getTextValue(modelNode, "description")); //$NON-NLS-1$
-		newModel.setModelEditorJson(objectMapper.writeValueAsString(modelNode.get("modelEditorJson"))); //$NON-NLS-1$
+		newModel.setModelEditorJson(getObjectMapper().writeValueAsString(modelNode.get("modelEditorJson"))); //$NON-NLS-1$
 		String thumbnail = getTextValue(modelNode, "thumbnail"); //$NON-NLS-1$
 		if (thumbnail != null) {
 			newModel.setThumbnail(Base64.decodeBase64(thumbnail));
@@ -345,23 +345,23 @@ public class FileSystemModelServiceImpl extends AbstractHistoryLessModelService 
 	 * @throws IOException
 	 */
 	protected void persistModel(Model pModel, boolean pNewVersion, String pComment, User pUpdatedBy) {
-		ObjectNode modelJson = objectMapper.createObjectNode();
+		ObjectNode modelJson = getObjectMapper().createObjectNode();
 		modelJson.put("name", pModel.getName()); //$NON-NLS-1$
 		modelJson.put("description", pModel.getDescription()); //$NON-NLS-1$
 		modelJson.put("createdBy", pModel.getCreatedBy() == null ? pUpdatedBy.getId() : pModel.getCreatedBy()); //$NON-NLS-1$
-		modelJson.put("created", objectMapper.getDeserializationConfig().getDateFormat().format(pModel.getCreated() == null ? new Date() : pModel.getCreated())); //$NON-NLS-1$
+		modelJson.put("created", getObjectMapper().getDeserializationConfig().getDateFormat().format(pModel.getCreated() == null ? new Date() : pModel.getCreated())); //$NON-NLS-1$
 		modelJson.put("lastUpdatedBy", pUpdatedBy == null ? pModel.getLastUpdatedBy() : pUpdatedBy.getId()); //$NON-NLS-1$
-		modelJson.put("lastUpdated", objectMapper.getDeserializationConfig().getDateFormat().format(new Date())); //$NON-NLS-1$
+		modelJson.put("lastUpdated", getObjectMapper().getDeserializationConfig().getDateFormat().format(new Date())); //$NON-NLS-1$
 		try {
 			File file = getFile(getId(pModel));
 			// Parse json to java
 			if (pModel.getModelEditorJson() != null) {
-				ObjectNode jsonNode = (ObjectNode) objectMapper.readTree(pModel.getModelEditorJson());
+				ObjectNode jsonNode = (ObjectNode) getObjectMapper().readTree(pModel.getModelEditorJson());
 				modelJson.put("modelEditorJson", jsonNode); //$NON-NLS-1$
 				int type = pModel.getModelType() == null ? AbstractModel.MODEL_TYPE_BPMN : pModel.getModelType().intValue();
 				if (type == AbstractModel.MODEL_TYPE_BPMN) {
 					// Thumbnail
-					modelImageService.generateThumbnailImage(pModel, jsonNode);
+					generateThumbnailImage(pModel, jsonNode);
 				}
 
 				if (type != AbstractModel.MODEL_TYPE_APP) {
@@ -377,7 +377,7 @@ public class FileSystemModelServiceImpl extends AbstractHistoryLessModelService 
 			file.getParentFile().mkdirs();
 			OutputStreamWriter os = new OutputStreamWriter(new FileOutputStream(file), getEncoding());
 			try {
-				objectMapper.writerWithDefaultPrettyPrinter().writeValue(os, modelJson);
+				getObjectMapper().writerWithDefaultPrettyPrinter().writeValue(os, modelJson);
 			}
 			finally {
 				os.close();
@@ -417,7 +417,7 @@ public class FileSystemModelServiceImpl extends AbstractHistoryLessModelService 
 		try {
 		InputStreamReader is = new InputStreamReader(new FileInputStream(getFile(pModelId)), getEncoding());
 		try {
-			modelNode = (ObjectNode) objectMapper.readTree(is);
+			modelNode = (ObjectNode) getObjectMapper().readTree(is);
 		}
 		finally {
 			is.close();

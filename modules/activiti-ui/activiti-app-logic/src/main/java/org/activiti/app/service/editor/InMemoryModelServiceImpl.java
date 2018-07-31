@@ -124,7 +124,7 @@ public class InMemoryModelServiceImpl extends AbstractHistoryLessModelService {
 	@Override
 	public ObjectNode loadJson(String pModelId) {
 		try {
-			return (ObjectNode) objectMapper.readTree(getModel(pModelId).getModelEditorJson());
+			return (ObjectNode) getObjectMapper().readTree(getModel(pModelId).getModelEditorJson());
 		}
 		catch (IOException e) {
 			LOGGER.error("Could not read model " + pModelId, e); //$NON-NLS-1$
