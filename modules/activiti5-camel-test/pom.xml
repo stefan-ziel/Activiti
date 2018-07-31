@@ -5,7 +5,6 @@
 
   <name>Activiti 5 - Camel - Compatability tests</name>
   <artifactId>activiti5-camel-test</artifactId>
-  <packaging>jar</packaging>
 
   <parent>
     <groupId>org.activiti</groupId>
@@ -14,6 +13,9 @@
     <version>6.0.1-SNAPSHOT</version>
   </parent>
 
+  <properties>
+    <suppressionFile>${basedir}/../../dependency-check-suppression.xml</suppressionFile>
+  </properties>
 
   <dependencies>
   	<dependency>
@@ -67,8 +69,8 @@
       <artifactId>jcl-over-slf4j</artifactId>
     </dependency>
     <dependency>
-      <groupId>org.slf4j</groupId>
-      <artifactId>slf4j-log4j12</artifactId>
+      <groupId>ch.qos.logback</groupId>
+      <artifactId>logback-classic</artifactId>
       <scope>test</scope>
     </dependency>
     <dependency>
@@ -104,7 +106,6 @@
           <plugin>
             <groupId>org.apache.maven.plugins</groupId>
             <artifactId>maven-source-plugin</artifactId>
-            <version>2.1.1</version>
             <executions>
               <execution>
                 <id>attach-sources</id>
