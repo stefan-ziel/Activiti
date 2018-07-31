@@ -23,7 +23,8 @@ import org.activiti.app.model.editor.ModelKeyRepresentation;
 import org.activiti.app.model.editor.ReviveModelResultRepresentation;
 import org.activiti.app.service.exception.InternalServerErrorException;
 import org.activiti.engine.identity.User;
-import org.apache.log4j.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Configurable;
 
 import com.fasterxml.jackson.databind.node.ObjectNode;
@@ -35,7 +36,7 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 @Configurable
 public class InMemoryModelServiceImpl extends AbstractHistoryLessModelService {
 
-	private static final Logger LOGGER = Logger.getLogger(InMemoryModelServiceImpl.class);
+	private static final Logger LOGGER = LoggerFactory.getLogger(InMemoryModelServiceImpl.class);
 
 	Hashtable<String, Model> models = new Hashtable<>();
 

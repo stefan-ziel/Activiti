@@ -32,7 +32,8 @@ import org.activiti.app.security.SecurityUtils;
 import org.activiti.app.service.exception.InternalServerErrorException;
 import org.activiti.engine.identity.User;
 import org.apache.commons.codec.binary.Base64;
-import org.apache.log4j.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Configurable;
 
 import com.fasterxml.jackson.databind.node.ObjectNode;
@@ -48,7 +49,7 @@ public class FileSystemModelServiceImpl extends AbstractHistoryLessModelService 
 	protected static final String EXTENSION = ".json"; //$NON-NLS-1$
 	/** model type to subpath mapping */
 	protected static final String[] MODEL_TYPE_DIR = {"bpmn", "template", "form", "app", "decisiontable"}; //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$ //$NON-NLS-4$ //$NON-NLS-5$
-	private static final Logger LOGGER = Logger.getLogger(FileSystemModelServiceImpl.class);
+	private static final Logger LOGGER = LoggerFactory.getLogger(FileSystemModelServiceImpl.class);
 
 	String encoding = "UTF-8"; //$NON-NLS-1$
 

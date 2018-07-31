@@ -27,7 +27,8 @@ import org.activiti.app.security.SecurityUtils;
 import org.activiti.app.service.exception.InternalServerErrorException;
 import org.activiti.engine.identity.User;
 import org.apache.commons.lang3.StringUtils;
-import org.apache.log4j.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.xml.sax.Attributes;
 import org.xml.sax.ContentHandler;
 import org.xml.sax.InputSource;
@@ -40,7 +41,7 @@ import org.xml.sax.helpers.DefaultHandler;
  */
 public class SVNModelServiceImpl extends FileSystemModelServiceImpl {
 
-	static final Logger LOGGER = Logger.getLogger(SVNModelServiceImpl.class);
+	static final Logger LOGGER = LoggerFactory.getLogger(SVNModelServiceImpl.class);
 
 	private static SAXParserFactory parserFactory = SAXParserFactory.newInstance();
 
@@ -265,7 +266,7 @@ public class SVNModelServiceImpl extends FileSystemModelServiceImpl {
 			return terminal;
 		}
 		catch (InterruptedException irex) {
-			LOGGER.error(irex);
+			LOGGER.error(irex.getMessage(),irex);
 			throw new IOException("External command interrupted"); //$NON-NLS-1$
 		}
 	}
@@ -516,7 +517,7 @@ public class SVNModelServiceImpl extends FileSystemModelServiceImpl {
 				result = buffer.toString();
 			}
 			catch (IOException ioe) {
-				LOGGER.error(ioe);
+				LOGGER.error(ioe.getMessage(),ioe);
 			}
 		}
 
