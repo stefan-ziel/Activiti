@@ -57,5 +57,10 @@ public class AppDefinitionsResource extends AbstractAppDefinitionsResource {
 
     return createRepresentation(deployment);
   }
+  
+  @RequestMapping(value = "/rest/runtime/app-definitions/{deploymentKey}", method = RequestMethod.DELETE)
+  public void removeAppDefinition(@PathVariable("deploymentKey") String deploymentKey) {
+    repositoryService.deleteDeployment(deploymentKey);
+  }
 
 }
