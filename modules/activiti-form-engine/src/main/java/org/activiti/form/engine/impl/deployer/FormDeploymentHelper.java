@@ -43,7 +43,7 @@ public class FormDeploymentHelper  {
     for (FormEntity form : forms) {
       if (keySet.contains(form.getKey())) {
         throw new ActivitiFormException(
-            "The deployment contains forms with the same key, this is not allowed");
+            "The deployment contains two or more forms with the key "+form.getKey());
       }
       keySet.add(form.getKey());
     }
