@@ -48,7 +48,7 @@ public class FileSystemModelServiceImpl extends AbstractHistoryLessModelService 
 	/** default extension */
 	protected static final String EXTENSION = ".json"; //$NON-NLS-1$
 	/** model type to subpath mapping */
-	protected static final String[] MODEL_TYPE_DIR = {"bpmn", "template", "form", "app", "decisiontable"}; //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$ //$NON-NLS-4$ //$NON-NLS-5$
+	protected static final String[] MODEL_TYPE_DIR = {"bpmn", "template", "form", "app", "decisiontable","translation"}; //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$ //$NON-NLS-4$ //$NON-NLS-5$ //$NON-NLS-6$
 	private static final Logger LOGGER = LoggerFactory.getLogger(FileSystemModelServiceImpl.class);
 
 	String encoding = "UTF-8"; //$NON-NLS-1$
@@ -358,14 +358,14 @@ public class FileSystemModelServiceImpl extends AbstractHistoryLessModelService 
 			// Parse json to java
 			if (pModel.getModelEditorJson() != null) {
 				ObjectNode jsonNode = (ObjectNode) getObjectMapper().readTree(pModel.getModelEditorJson());
-				modelJson.put("modelEditorJson", jsonNode); //$NON-NLS-1$
+				modelJson.set("modelEditorJson", jsonNode); //$NON-NLS-1$
 				int type = pModel.getModelType() == null ? AbstractModel.MODEL_TYPE_BPMN : pModel.getModelType().intValue();
 				if (type == AbstractModel.MODEL_TYPE_BPMN) {
 					// Thumbnail
 					generateThumbnailImage(pModel, jsonNode);
 				}
 
-				if (type != AbstractModel.MODEL_TYPE_APP) {
+				if (type != AbstractModel.MODEL_TYPE_APP && type != AbstractModel.MODEL_TYPE_TRANSLATION) {
 					jsonNode.put("name", pModel.getName()); //$NON-NLS-1$
 					jsonNode.put("description", pModel.getDescription()); //$NON-NLS-1$
 				}
