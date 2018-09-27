@@ -38,6 +38,7 @@ import org.activiti.app.security.SecurityUtils;
 import org.activiti.app.service.api.ModelService;
 import org.activiti.app.service.exception.BadRequestException;
 import org.activiti.app.service.exception.InternalServerErrorException;
+import org.activiti.app.service.util.DeployUtil;
 import org.activiti.app.util.XmlUtil;
 import org.activiti.dmn.model.DmnDefinition;
 import org.activiti.dmn.xml.converter.DmnXMLConverter;
@@ -70,9 +71,6 @@ public class ActivitiDecisionTableService extends BaseActivitiModelService {
 
   @Autowired
   protected ObjectMapper objectMapper;
-
-  protected DmnJsonConverter dmnJsonConverter = new DmnJsonConverter();
-  protected DmnXMLConverter dmnXmlConverter = new DmnXMLConverter();
 
   public List<DecisionTableRepresentation> getDecisionTables(String[] decisionTableIds) {
     List<DecisionTableRepresentation> decisionTableRepresentations = new ArrayList<>();
@@ -140,8 +138,8 @@ public class ActivitiDecisionTableService extends BaseActivitiModelService {
       ServletOutputStream servletOutputStream = response.getOutputStream();
       response.setContentType("application/xml");
 
-      DmnDefinition dmnDefinition = dmnJsonConverter.convertToDmn(editorJsonNode, decisionTableModel.getId(), decisionTableModel.getVersion(), decisionTableModel.getLastUpdated());
-      byte[] xmlBytes = dmnXmlConverter.convertToXML(dmnDefinition);
+      DmnDefinition dmnDefinition = DeployUtil.DMN_JSON_CONVERTER.convertToDmn(editorJsonNode, decisionTableModel.getId(), decisionTableModel.getVersion(), decisionTableModel.getLastUpdated());
+      byte[] xmlBytes = DeployUtil.DMN_XML_CONVERTER.convertToXML(dmnDefinition);
 
       BufferedInputStream in = new BufferedInputStream(new ByteArrayInputStream(xmlBytes));
 
@@ -173,8 +171,8 @@ public class ActivitiDecisionTableService extends BaseActivitiModelService {
         InputStreamReader xmlIn = new InputStreamReader(file.getInputStream(), "UTF-8");
         XMLStreamReader xtr = xif.createXMLStreamReader(xmlIn);
 
-        DmnDefinition dmnDefinition = dmnXmlConverter.convertToDmnModel(xtr);
-        ObjectNode editorJsonNode = dmnJsonConverter.convertToJson(dmnDefinition);
+        DmnDefinition dmnDefinition = DeployUtil.DMN_XML_CONVERTER.convertToDmnModel(xtr);
+        ObjectNode editorJsonNode = DeployUtil.DMN_JSON_CONVERTER.convertToJson(dmnDefinition);
 
         // remove id to avoid InvalidFormatException when deserializing
         editorJsonNode.remove("id");

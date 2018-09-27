@@ -30,6 +30,7 @@ import org.activiti.app.service.api.ModelService;
 import org.activiti.app.service.editor.AppDefinitionExportService;
 import org.activiti.app.service.editor.AppDefinitionImportService;
 import org.activiti.app.service.exception.InternalServerErrorException;
+import org.activiti.app.service.util.DeployUtil;
 import org.activiti.engine.identity.User;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -89,12 +90,12 @@ public class AppDefinitionResource {
     String editorJson = null;
     try {
       editorJson = objectMapper.writeValueAsString(updatedModel.getAppDefinition().getDefinition());
+      model = modelService.saveModel(model, editorJson, null, false, null, user);
+      DeployUtil.gatherTexts(model, modelService, objectMapper);
     } catch (Exception e) {
       logger.error("Error while processing app definition json " + modelId, e);
       throw new InternalServerErrorException("App definition could not be saved " + modelId);
     }
-
-    model = modelService.saveModel(model, editorJson, null, false, null, user);
 
     if (updatedModel.isPublish()) {
       return appDefinitionImportService.publishAppDefinition(modelId, new AppDefinitionPublishRepresentation(updatedModel.getComment(), updatedModel.getForce()));

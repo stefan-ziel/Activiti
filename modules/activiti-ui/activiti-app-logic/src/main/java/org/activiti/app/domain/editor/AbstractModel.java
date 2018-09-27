@@ -16,14 +16,11 @@ import java.util.Date;
 
 import javax.persistence.Column;
 import javax.persistence.GeneratedValue;
-import javax.persistence.GenerationType;
 import javax.persistence.Id;
 import javax.persistence.MappedSuperclass;
-import javax.persistence.TableGenerator;
 import javax.persistence.Temporal;
 import javax.persistence.TemporalType;
 
-import org.activiti.app.domain.common.IdBlockSize;
 import org.hibernate.annotations.GenericGenerator;
 
 @MappedSuperclass
@@ -34,6 +31,7 @@ public class AbstractModel {
   public static final int MODEL_TYPE_FORM = 2;
   public static final int MODEL_TYPE_APP = 3;
   public static final int MODEL_TYPE_DECISION_TABLE = 4;
+  public static final int MODEL_TYPE_TRANSLATION = 5;
 
 
   @Id

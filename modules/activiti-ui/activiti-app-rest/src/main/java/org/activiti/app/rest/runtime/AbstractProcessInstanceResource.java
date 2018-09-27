@@ -38,6 +38,7 @@ import org.activiti.engine.identity.User;
 import org.activiti.engine.impl.persistence.entity.ProcessDefinitionEntity;
 import org.activiti.form.api.FormRepositoryService;
 import org.activiti.form.api.FormService;
+import org.activiti.form.engine.ActivitiFormException;
 import org.activiti.form.model.FormDefinition;
 import org.activiti.form.model.FormField;
 import org.activiti.form.model.FormFieldTypes;
@@ -98,11 +99,14 @@ public abstract class AbstractProcessInstanceResource {
 
     ProcessInstanceRepresentation processInstanceResult = new ProcessInstanceRepresentation(processInstance, processDefinition, processDefinition.isGraphicalNotationDefined(), userRep);
 
-    FormDefinition formDefinition = getStartFormDefinition(processInstance.getProcessDefinitionId(), processDefinition, processInstance.getId());
-    if (formDefinition != null) {
-      processInstanceResult.setStartFormDefined(true);
+    try {
+	    FormDefinition formDefinition = getStartFormDefinition(processInstance.getProcessDefinitionId(), processDefinition, processInstance.getId());
+	    if (formDefinition != null) {
+	      processInstanceResult.setStartFormDefined(true);
+	    }
+    } catch (ActivitiFormException e) {
+      processInstanceResult.setStartFormDefined(false);
     }
-
     return processInstanceResult;
   }
 

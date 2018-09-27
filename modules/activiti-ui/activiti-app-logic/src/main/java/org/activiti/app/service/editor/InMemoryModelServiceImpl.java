@@ -30,8 +30,7 @@ import org.springframework.beans.factory.annotation.Configurable;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 
 /**
- * A Model service that stores all information in the file system starting from
- * a root directory. No history is provided.
+ * A Model service that stores all information in memory. No history is provided.
  */
 @Configurable
 public class InMemoryModelServiceImpl extends AbstractHistoryLessModelService {
