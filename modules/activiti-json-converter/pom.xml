@@ -3,18 +3,17 @@
 
   <modelVersion>4.0.0</modelVersion>
 
-  <name>Activiti - JSON Converter</name>
-  <artifactId>activiti-json-converter</artifactId>
-
   <parent>
     <groupId>org.activiti</groupId>
-    <artifactId>activiti-root</artifactId>
-    <relativePath>../..</relativePath>
+    <artifactId>activiti-parent</artifactId>
     <version>6.0.1-SNAPSHOT</version>
+    <relativePath>../activiti-parent</relativePath>
   </parent>
-  
+
+  <artifactId>activiti-json-converter</artifactId>
+  <name>Activiti - JSON Converter</name>
+
   <properties>
-    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <activiti.artifact>
       org.activiti.json.converter
     </activiti.artifact>
@@ -27,13 +26,6 @@
     <plugins>
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
-        <artifactId>maven-compiler-plugin</artifactId>
-        <configuration>
-          <source>1.7</source>
-          <target>1.7</target>
-        </configuration>
-      </plugin>
-      <plugin>
         <artifactId>maven-jar-plugin</artifactId>
         <configuration>
           <archive>
@@ -131,22 +123,22 @@
       <groupId>junit</groupId>
       <artifactId>junit</artifactId>
       <scope>provided</scope>
-    </dependency>     
+    </dependency>
     <dependency>
       <groupId>org.slf4j</groupId>
       <artifactId>slf4j-api</artifactId>
-    </dependency>     
-    <dependency>
-        <groupId>org.slf4j</groupId>
-        <artifactId>jcl-over-slf4j</artifactId>
     </dependency>
     <dependency>
       <groupId>org.slf4j</groupId>
-      <artifactId>slf4j-log4j12</artifactId>
+      <artifactId>jcl-over-slf4j</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>ch.qos.logback</groupId>
+      <artifactId>logback-classic</artifactId>
       <scope>test</scope>
     </dependency>
   </dependencies>
-  
+
   <profiles>
     <profile>
       <id>distro</id>
@@ -155,7 +147,6 @@
           <plugin>
             <groupId>org.apache.maven.plugins</groupId>
             <artifactId>maven-source-plugin</artifactId>
-            <version>2.1.1</version>
             <executions>
               <execution>
                 <id>attach-sources</id>
