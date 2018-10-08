@@ -176,6 +176,16 @@ public abstract class AbstractModelService implements ModelService {
 		return getModelsByModelType(pModelType, pFilter);
 	}
 
+	/**
+	 * @return the object mapper
+	 */
+	public ObjectMapper getObjectMapper() {
+		if (objectMapper == null) {
+			objectMapper = new ObjectMapper();
+		}
+		return objectMapper;
+	}
+
 	@Override
 	public List<Model> getReferencedModels(String pModelId) {
 		Integer modelType = getModelType(pModelId);
@@ -237,13 +247,13 @@ public abstract class AbstractModelService implements ModelService {
 	 * @param appDefinitionId app to delete
 	 */
 	protected void deleteAppDefinition(String appDefinitionId) {
-		if(deploymentService != null){
+		if (deploymentService != null) {
 			deploymentService.deleteAppDefinition(appDefinitionId);
 		}
 	}
 
 	/**
-	 * @param model the model 
+	 * @param model the model
 	 * @param editorJsonNode the json representation
 	 */
 	protected void generateThumbnailImage(Model model, ObjectNode editorJsonNode) {
@@ -253,16 +263,14 @@ public abstract class AbstractModelService implements ModelService {
 	}
 
 	/**
-	 * @return the object mapper
+	 * get a date from a JSON object
+	 * 
+	 * @param pJsonObject the object
+	 * @param pName the member name
+	 * @return the date if contained else null
+	 * @throws IOException unparseable value
 	 */
-	public ObjectMapper getObjectMapper() {
-		if(objectMapper == null) {
-			objectMapper = new ObjectMapper();
-		}
-		return objectMapper;
-	}
-
-	Date getDateValue(ObjectNode pJsonObject, String pName) throws IOException {
+	protected Date getDateValue(ObjectNode pJsonObject, String pName) throws IOException {
 		JsonNode jn = pJsonObject.get(pName);
 		try {
 			return jn == null ? null : getObjectMapper().getDeserializationConfig().getDateFormat().parse(jn.textValue());
@@ -272,14 +280,54 @@ public abstract class AbstractModelService implements ModelService {
 		}
 	}
 
-	int getIntValue(ObjectNode pJsonObject, String pName) {
+	/**
+	 * get an integer from a JSON object
+	 * 
+	 * @param pJsonObject the object
+	 * @param pName the member name
+	 * @return the value or -1 if not contained
+	 */
+	protected int getIntValue(ObjectNode pJsonObject, String pName) {
 		JsonNode jn = pJsonObject.get(pName);
 		return jn == null ? -1 : jn.intValue();
 	}
 
-	String getTextValue(ObjectNode pJsonObject, String pName) {
+	/**
+	 * get a text from a JSON object
+	 * 
+	 * @param pJsonObject the object
+	 * @param pName the member name
+	 * @return the value or null if not contained
+	 */
+	protected String getTextValue(ObjectNode pJsonObject, String pName) {
 		JsonNode jn = pJsonObject.get(pName);
 		return jn == null ? null : jn.textValue();
+	}
+
+	/**
+	 * put a date to a JSON object if it is not null 
+	 * 
+	 * @param pJsonObject the object 
+	 * @param pName the member name 
+	 * @param pValue the value
+	 */
+	protected void putDateValue(ObjectNode pJsonObject, String pName, Date pValue) {
+		if (pValue != null) {
+			pJsonObject.put(pName, getObjectMapper().getDeserializationConfig().getDateFormat().format(pValue)); 
+		}
+	}
+
+	/**
+	 * put a text to a JSON object if it is not null or empty 
+	 * 
+	 * @param pJsonObject the object 
+	 * @param pName the member name 
+	 * @param pValue the value
+	 */
+	protected void putTextValue(ObjectNode pJsonObject, String pName, String pValue) {
+		if (StringUtils.isNotEmpty(pValue)) {
+			pJsonObject.put(pName, pValue);
+		}
 	}
 
 	Model internalSave(String name, String key, String description, String editorJson, boolean newVersion, String newVersionComment, byte[] imageBytes, User updatedBy, Model modelObject) {
@@ -292,11 +340,5 @@ public abstract class AbstractModelService implements ModelService {
 			modelObject.setThumbnail(imageBytes);
 		}
 		return saveModel(modelObject);
-	}
-
-	void putTextValue(ObjectNode pJsonObject, String pName, String pValue) {
-		if (StringUtils.isNotEmpty(pValue)) {
-			pJsonObject.put(pName, pValue);
-		}
 	}
 }

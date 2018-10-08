@@ -17,7 +17,6 @@ import java.io.FilenameFilter;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
-import java.io.Reader;
 import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.Date;
@@ -48,13 +47,12 @@ public class FileSystemModelServiceImpl extends AbstractHistoryLessModelService 
 	/** default extension */
 	protected static final String EXTENSION = ".json"; //$NON-NLS-1$
 	/** model type to subpath mapping */
-	protected static final String[] MODEL_TYPE_DIR = {"bpmn", "template", "form", "app", "decisiontable","translation"}; //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$ //$NON-NLS-4$ //$NON-NLS-5$ //$NON-NLS-6$
+	protected static final String[] MODEL_TYPE_DIR = {"bpmn", "template", "form", "app", "decisiontable", "translation"}; //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$ //$NON-NLS-4$ //$NON-NLS-5$ //$NON-NLS-6$
 	private static final Logger LOGGER = LoggerFactory.getLogger(FileSystemModelServiceImpl.class);
 
 	String encoding = "UTF-8"; //$NON-NLS-1$
 
 	File rootDir;
-
 
 	/**
 	 * @param pRootDir
@@ -100,14 +98,7 @@ public class FileSystemModelServiceImpl extends AbstractHistoryLessModelService 
 	@Override
 	public Model getModel(String pModelId) {
 		try {
-			File file = getFile(pModelId);
-			InputStreamReader is = new InputStreamReader(new FileInputStream(file),getEncoding());
-			try {
-				return loadModel(getModelType(pModelId), getModelKey(pModelId), getVersion(file), is);
-			}
-			finally {
-				is.close();
-			}
+			return loadModel(getModelType(pModelId), getModelKey(pModelId), getFile(pModelId));
 		}
 		catch (IOException e) {
 			LOGGER.error("Could not open model for " + pModelId, e); //$NON-NLS-1$
@@ -150,7 +141,7 @@ public class FileSystemModelServiceImpl extends AbstractHistoryLessModelService 
 			for (File file : files) {
 				String id = getId(file);
 				try {
-					res.add(loadModel(getModelType(id), getModelKey(id), getVersion(file), new InputStreamReader(new FileInputStream(file),getEncoding())));
+					res.add(loadModel(getModelType(id), getModelKey(id), file));
 				}
 				catch (Throwable e) {
 					LOGGER.warn("Unable to load model file " + id, e); //$NON-NLS-1$
@@ -293,15 +284,49 @@ public class FileSystemModelServiceImpl extends AbstractHistoryLessModelService 
 	}
 
 	/**
+	 * @param pModelNode File Content
 	 * @param pFile the File
 	 * @return the current version. number -1, authenticated user and file time.
+	 * @throws IOException
 	 */
-	protected ModelHistory getVersion(File pFile) {
+	protected ModelHistory getVersion(ObjectNode pModelNode, File pFile) throws IOException {
 		ModelHistory version = new ModelHistory();
 		version.setVersion(-1);
-		version.setLastUpdatedBy(SecurityUtils.getCurrentUserId());
-		version.setLastUpdated(new Date(pFile.lastModified()));
+		version.setCreatedBy(getTextValue(pModelNode, "createdBy")); //$NON-NLS-1$
+		version.setCreated(getDateValue(pModelNode, "created")); //$NON-NLS-1$
+		version.setLastUpdatedBy(getTextValue(pModelNode, "lastUpdatedBy")); //$NON-NLS-1$
+		version.setLastUpdated(getDateValue(pModelNode, "lastUpdated")); //$NON-NLS-1$
+		version.setComment(getTextValue(pModelNode, "comment")); //$NON-NLS-1$
 		return version;
+	}
+
+	/**
+	 * @param pModel The Model
+	 * @param pNewVersion this shall create a new Version
+	 * @param pComment Commit Comment
+	 * @param pUpdatedBy User
+	 * @param pModelJson Model to write
+	 */
+	protected void setVersion(Model pModel, boolean pNewVersion, String pComment, User pUpdatedBy, ObjectNode pModelJson) {
+		if (pModel.getCreatedBy() == null) {
+			if (pUpdatedBy == null) {
+				pModel.setCreatedBy(SecurityUtils.getCurrentUserId());
+			} else {
+				pModel.setCreatedBy(pUpdatedBy.getId());
+			}
+			pModel.setCreated(new Date());
+		} else if (pUpdatedBy != null) {
+			pModel.setLastUpdatedBy(pUpdatedBy.getId());
+			pModel.setLastUpdated(new Date());
+		} else if (pNewVersion) {
+			pModel.setLastUpdatedBy(SecurityUtils.getCurrentUserId());
+			pModel.setLastUpdated(new Date());
+		}
+		putTextValue(pModelJson, "createdBy", pModel.getCreatedBy()); //$NON-NLS-1$
+		putDateValue(pModelJson, "created", pModel.getCreated()); //$NON-NLS-1$
+		putTextValue(pModelJson, "lastUpdatedBy", pModel.getLastUpdatedBy()); //$NON-NLS-1$
+		putDateValue(pModelJson, "lastUpdated", pModel.getLastUpdated()); //$NON-NLS-1$
+		putTextValue(pModelJson, "comment", pComment); //$NON-NLS-1$
 	}
 
 	/**
@@ -315,29 +340,36 @@ public class FileSystemModelServiceImpl extends AbstractHistoryLessModelService 
 	 * @throws IOException
 	 * @throws ParseException
 	 */
-	protected Model loadModel(Integer pType, String pKey, ModelHistory pVersion, Reader pModelFile) throws IOException {
-		ObjectNode modelNode = (ObjectNode) getObjectMapper().readTree(pModelFile);
-		Model newModel = new Model();
-		newModel.setId(getId(pType, pKey));
-		newModel.setKey(pKey);
-		newModel.setModelType(pType);
-		newModel.setVersion(pVersion.getVersion());
-		newModel.setLastUpdatedBy(pVersion.getLastUpdatedBy());
-		newModel.setLastUpdated(pVersion.getLastUpdated());
-		newModel.setComment(pVersion.getComment());
-		newModel.setName(getTextValue(modelNode, "name")); //$NON-NLS-1$
-		newModel.setDescription(getTextValue(modelNode, "description")); //$NON-NLS-1$
-		newModel.setModelEditorJson(getObjectMapper().writeValueAsString(modelNode.get("modelEditorJson"))); //$NON-NLS-1$
-		String thumbnail = getTextValue(modelNode, "thumbnail"); //$NON-NLS-1$
-		if (thumbnail != null) {
-			newModel.setThumbnail(Base64.decodeBase64(thumbnail));
+	protected Model loadModel(Integer pType, String pKey, File pModelFile) throws IOException {
+		InputStreamReader is = new InputStreamReader(new FileInputStream(pModelFile), getEncoding());
+		try {
+			ObjectNode modelNode = (ObjectNode) getObjectMapper().readTree(is);
+			ModelHistory version = getVersion(modelNode, pModelFile);
+			Model newModel = new Model();
+			newModel.setId(getId(pType, pKey));
+			newModel.setKey(pKey);
+			newModel.setModelType(pType);
+			newModel.setVersion(version.getVersion());
+			newModel.setLastUpdatedBy(version.getLastUpdatedBy());
+			newModel.setLastUpdated(version.getLastUpdated());
+			newModel.setComment(version.getComment());
+			newModel.setName(getTextValue(modelNode, "name")); //$NON-NLS-1$
+			newModel.setDescription(getTextValue(modelNode, "description")); //$NON-NLS-1$
+			newModel.setModelEditorJson(getObjectMapper().writeValueAsString(modelNode.get("modelEditorJson"))); //$NON-NLS-1$
+			String thumbnail = getTextValue(modelNode, "thumbnail"); //$NON-NLS-1$
+			if (thumbnail != null) {
+				newModel.setThumbnail(Base64.decodeBase64(thumbnail));
+			}
+			newModel.setCreatedBy(getTextValue(modelNode, "createdBy")); //$NON-NLS-1$
+			newModel.setCreated(getDateValue(modelNode, "created")); //$NON-NLS-1$
+			return newModel;
 		}
-		newModel.setCreatedBy(getTextValue(modelNode, "createdBy")); //$NON-NLS-1$
-		newModel.setCreated(getDateValue(modelNode, "created")); //$NON-NLS-1$
-		return newModel;
+		finally {
+			is.close();
+		}
+
 	}
-	
-		
+
 	/**
 	 * @param pModel The Model
 	 * @param pNewVersion Create new Repository version
@@ -347,12 +379,9 @@ public class FileSystemModelServiceImpl extends AbstractHistoryLessModelService 
 	 */
 	protected void persistModel(Model pModel, boolean pNewVersion, String pComment, User pUpdatedBy) {
 		ObjectNode modelJson = getObjectMapper().createObjectNode();
-		modelJson.put("name", pModel.getName()); //$NON-NLS-1$
-		modelJson.put("description", pModel.getDescription()); //$NON-NLS-1$
-		modelJson.put("createdBy", pModel.getCreatedBy() == null ? pUpdatedBy.getId() : pModel.getCreatedBy()); //$NON-NLS-1$
-		modelJson.put("created", getObjectMapper().getDeserializationConfig().getDateFormat().format(pModel.getCreated() == null ? new Date() : pModel.getCreated())); //$NON-NLS-1$
-		modelJson.put("lastUpdatedBy", pUpdatedBy == null ? pModel.getLastUpdatedBy() : pUpdatedBy.getId()); //$NON-NLS-1$
-		modelJson.put("lastUpdated", getObjectMapper().getDeserializationConfig().getDateFormat().format(new Date())); //$NON-NLS-1$
+		putTextValue(modelJson, "name", pModel.getName()); //$NON-NLS-1$
+		putTextValue(modelJson, "description", pModel.getDescription()); //$NON-NLS-1$
+		setVersion(pModel, pNewVersion, pComment, pUpdatedBy, modelJson);
 		try {
 			File file = getFile(getId(pModel));
 			// Parse json to java
@@ -366,8 +395,8 @@ public class FileSystemModelServiceImpl extends AbstractHistoryLessModelService 
 				}
 
 				if (type != AbstractModel.MODEL_TYPE_APP && type != AbstractModel.MODEL_TYPE_TRANSLATION) {
-					jsonNode.put("name", pModel.getName()); //$NON-NLS-1$
-					jsonNode.put("description", pModel.getDescription()); //$NON-NLS-1$
+					putTextValue(jsonNode, "name", pModel.getName()); //$NON-NLS-1$
+					putTextValue(jsonNode, "description", pModel.getDescription()); //$NON-NLS-1$
 				}
 			}
 			byte[] thumbnail = pModel.getThumbnail();
@@ -416,13 +445,13 @@ public class FileSystemModelServiceImpl extends AbstractHistoryLessModelService 
 	public ObjectNode loadJson(String pModelId) {
 		ObjectNode modelNode;
 		try {
-		InputStreamReader is = new InputStreamReader(new FileInputStream(getFile(pModelId)), getEncoding());
-		try {
-			modelNode = (ObjectNode) getObjectMapper().readTree(is);
-		}
-		finally {
-			is.close();
-		}
+			InputStreamReader is = new InputStreamReader(new FileInputStream(getFile(pModelId)), getEncoding());
+			try {
+				modelNode = (ObjectNode) getObjectMapper().readTree(is);
+			}
+			finally {
+				is.close();
+			}
 		}
 		catch (IOException e) {
 			LOGGER.error("Could not load models " + pModelId, e); //$NON-NLS-1$
