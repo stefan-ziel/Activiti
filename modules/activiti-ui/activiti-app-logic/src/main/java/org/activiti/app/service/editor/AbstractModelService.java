@@ -61,6 +61,8 @@ public abstract class AbstractModelService implements ModelService {
 	public Model createModel(Model pNewModel, User pCreatedBy) {
 		pNewModel.setCreated(new Date());
 		pNewModel.setCreatedBy(pCreatedBy.getId());
+		pNewModel.setLastUpdated(new Date());
+		pNewModel.setLastUpdatedBy(pCreatedBy.getId());
 		return saveModel(pNewModel);
 	}
 
@@ -81,14 +83,13 @@ public abstract class AbstractModelService implements ModelService {
 	public Model createNewModelVersion(Model pModel, String pComment, User pUpdatedBy) {
 		pModel.setLastUpdated(new Date());
 		pModel.setLastUpdatedBy(pUpdatedBy.getId());
-		return pModel;
+		pModel.setComment(pComment);
+		return saveModel(pModel);
 	}
 
 	@Override
 	public ModelHistory createNewModelVersionAndReturnModelHistory(Model pModel, String pComment, User pUpdatedBy) {
-		pModel.setLastUpdated(new Date());
-		pModel.setLastUpdatedBy(pUpdatedBy.getId());
-		return createNewModelhistory(pModel);
+		return createNewModelhistory(createNewModelVersion(pModel, pComment, pUpdatedBy));
 	}
 
 	@Override
@@ -335,9 +336,15 @@ public abstract class AbstractModelService implements ModelService {
 		modelObject.setKey(key);
 		modelObject.setDescription(description);
 		modelObject.setModelEditorJson(editorJson);
-
+		if(updatedBy != null) {
+			modelObject.setLastUpdatedBy(updatedBy.getId());
+			modelObject.setLastUpdated(new Date());
+		}
 		if (imageBytes != null) {
 			modelObject.setThumbnail(imageBytes);
+		}
+		if(newVersion) {
+			return createNewModelVersion(modelObject, newVersionComment, updatedBy);
 		}
 		return saveModel(modelObject);
 	}

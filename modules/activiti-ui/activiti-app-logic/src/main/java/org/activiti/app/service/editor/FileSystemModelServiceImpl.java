@@ -19,7 +19,6 @@ import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
 import java.text.ParseException;
 import java.util.ArrayList;
-import java.util.Date;
 import java.util.List;
 
 import org.activiti.app.domain.editor.AbstractModel;
@@ -27,7 +26,6 @@ import org.activiti.app.domain.editor.Model;
 import org.activiti.app.domain.editor.ModelHistory;
 import org.activiti.app.model.editor.ModelKeyRepresentation;
 import org.activiti.app.model.editor.ReviveModelResultRepresentation;
-import org.activiti.app.security.SecurityUtils;
 import org.activiti.app.service.exception.InternalServerErrorException;
 import org.activiti.engine.identity.User;
 import org.apache.commons.codec.binary.Base64;
@@ -62,23 +60,6 @@ public class FileSystemModelServiceImpl extends AbstractHistoryLessModelService 
 		rootDir = pRootDir;
 	}
 
-	@Override
-	public Model createModel(Model pNewModel, User pCreatedBy) {
-		persistModel(pNewModel, false, null, pCreatedBy);
-		return getModel(getId(pNewModel));
-	}
-
-	@Override
-	public Model createNewModelVersion(Model pModel, String pComment, User pUpdatedBy) {
-		persistModel(pModel, true, pComment, pUpdatedBy);
-		return getModel(getId(pModel));
-	}
-
-	@Override
-	public ModelHistory createNewModelVersionAndReturnModelHistory(Model pModel, String pComment, User pUpdatedBy) {
-		persistModel(pModel, true, pComment, pUpdatedBy);
-		return createNewModelhistory(getModel(getId(pModel)));
-	}
 
 	@Override
 	public void deleteModel(String pModelId, boolean pCascadeHistory, boolean pDeleteRuntimeApp, String pComment, User pDeletedBy) {
@@ -160,7 +141,44 @@ public class FileSystemModelServiceImpl extends AbstractHistoryLessModelService 
 
 	@Override
 	public Model saveModel(Model modelObject) {
-		persistModel(modelObject, false, null, null);
+		ObjectNode modelJson = getObjectMapper().createObjectNode();
+		putTextValue(modelJson, "name", modelObject.getName()); //$NON-NLS-1$
+		putTextValue(modelJson, "description", modelObject.getDescription()); //$NON-NLS-1$
+		setVersion(modelObject, modelJson);
+		try {
+			File file = getFile(getId(modelObject));
+			// Parse json to java
+			if (modelObject.getModelEditorJson() != null) {
+				ObjectNode jsonNode = (ObjectNode) getObjectMapper().readTree(modelObject.getModelEditorJson());
+				modelJson.set("modelEditorJson", jsonNode); //$NON-NLS-1$
+				int type = modelObject.getModelType() == null ? AbstractModel.MODEL_TYPE_BPMN : modelObject.getModelType().intValue();
+				if (type == AbstractModel.MODEL_TYPE_BPMN) {
+					// Thumbnail
+					generateThumbnailImage(modelObject, jsonNode);
+				}
+
+				if (type != AbstractModel.MODEL_TYPE_APP && type != AbstractModel.MODEL_TYPE_TRANSLATION) {
+					putTextValue(jsonNode, "name", modelObject.getName()); //$NON-NLS-1$
+					putTextValue(jsonNode, "description", modelObject.getDescription()); //$NON-NLS-1$
+				}
+			}
+			byte[] thumbnail = modelObject.getThumbnail();
+			if (thumbnail != null) {
+				modelJson.put("thumbnail", Base64.encodeBase64String(thumbnail)); //$NON-NLS-1$
+			}
+
+			file.getParentFile().mkdirs();
+			OutputStreamWriter os = new OutputStreamWriter(new FileOutputStream(file), getEncoding());
+			try {
+				getObjectMapper().writerWithDefaultPrettyPrinter().writeValue(os, modelJson);
+			}
+			finally {
+				os.close();
+			}
+		}
+		catch (IOException e) {
+			throw new InternalServerErrorException("unable to stoe model " + getId(modelObject)); //$NON-NLS-1$
+		}
 		return getModel(getId(modelObject));
 	}
 
@@ -307,26 +325,12 @@ public class FileSystemModelServiceImpl extends AbstractHistoryLessModelService 
 	 * @param pUpdatedBy User
 	 * @param pModelJson Model to write
 	 */
-	protected void setVersion(Model pModel, boolean pNewVersion, String pComment, User pUpdatedBy, ObjectNode pModelJson) {
-		if (pModel.getCreatedBy() == null) {
-			if (pUpdatedBy == null) {
-				pModel.setCreatedBy(SecurityUtils.getCurrentUserId());
-			} else {
-				pModel.setCreatedBy(pUpdatedBy.getId());
-			}
-			pModel.setCreated(new Date());
-		} else if (pUpdatedBy != null) {
-			pModel.setLastUpdatedBy(pUpdatedBy.getId());
-			pModel.setLastUpdated(new Date());
-		} else if (pNewVersion) {
-			pModel.setLastUpdatedBy(SecurityUtils.getCurrentUserId());
-			pModel.setLastUpdated(new Date());
-		}
+	protected void setVersion(Model pModel, ObjectNode pModelJson) {
 		putTextValue(pModelJson, "createdBy", pModel.getCreatedBy()); //$NON-NLS-1$
 		putDateValue(pModelJson, "created", pModel.getCreated()); //$NON-NLS-1$
 		putTextValue(pModelJson, "lastUpdatedBy", pModel.getLastUpdatedBy()); //$NON-NLS-1$
 		putDateValue(pModelJson, "lastUpdated", pModel.getLastUpdated()); //$NON-NLS-1$
-		putTextValue(pModelJson, "comment", pComment); //$NON-NLS-1$
+		putTextValue(pModelJson, "comment", pModel.getComment()); //$NON-NLS-1$
 	}
 
 	/**
@@ -366,55 +370,6 @@ public class FileSystemModelServiceImpl extends AbstractHistoryLessModelService 
 		}
 		finally {
 			is.close();
-		}
-
-	}
-
-	/**
-	 * @param pModel The Model
-	 * @param pNewVersion Create new Repository version
-	 * @param pComment Commit Comment
-	 * @param pUpdatedBy User updating
-	 * @throws IOException
-	 */
-	protected void persistModel(Model pModel, boolean pNewVersion, String pComment, User pUpdatedBy) {
-		ObjectNode modelJson = getObjectMapper().createObjectNode();
-		putTextValue(modelJson, "name", pModel.getName()); //$NON-NLS-1$
-		putTextValue(modelJson, "description", pModel.getDescription()); //$NON-NLS-1$
-		setVersion(pModel, pNewVersion, pComment, pUpdatedBy, modelJson);
-		try {
-			File file = getFile(getId(pModel));
-			// Parse json to java
-			if (pModel.getModelEditorJson() != null) {
-				ObjectNode jsonNode = (ObjectNode) getObjectMapper().readTree(pModel.getModelEditorJson());
-				modelJson.set("modelEditorJson", jsonNode); //$NON-NLS-1$
-				int type = pModel.getModelType() == null ? AbstractModel.MODEL_TYPE_BPMN : pModel.getModelType().intValue();
-				if (type == AbstractModel.MODEL_TYPE_BPMN) {
-					// Thumbnail
-					generateThumbnailImage(pModel, jsonNode);
-				}
-
-				if (type != AbstractModel.MODEL_TYPE_APP && type != AbstractModel.MODEL_TYPE_TRANSLATION) {
-					putTextValue(jsonNode, "name", pModel.getName()); //$NON-NLS-1$
-					putTextValue(jsonNode, "description", pModel.getDescription()); //$NON-NLS-1$
-				}
-			}
-			byte[] thumbnail = pModel.getThumbnail();
-			if (thumbnail != null) {
-				modelJson.put("thumbnail", Base64.encodeBase64String(thumbnail)); //$NON-NLS-1$
-			}
-
-			file.getParentFile().mkdirs();
-			OutputStreamWriter os = new OutputStreamWriter(new FileOutputStream(file), getEncoding());
-			try {
-				getObjectMapper().writerWithDefaultPrettyPrinter().writeValue(os, modelJson);
-			}
-			finally {
-				os.close();
-			}
-		}
-		catch (IOException e) {
-			throw new InternalServerErrorException("unable to stoe model " + getId(pModel)); //$NON-NLS-1$
 		}
 	}
 
