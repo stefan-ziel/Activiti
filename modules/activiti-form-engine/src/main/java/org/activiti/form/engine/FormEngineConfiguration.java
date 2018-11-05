@@ -1120,6 +1120,10 @@ public class FormEngineConfiguration {
     return formService;
   }
 
+  public void setFormService(FormService formService) {
+    this.formService = formService;
+  }
+
   public DeploymentManager getDeploymentManager() {
     return deploymentManager;
   }
