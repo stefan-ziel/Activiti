@@ -31,10 +31,6 @@
 			<artifactId>jcl-over-slf4j</artifactId>
 		</dependency>
 		<dependency>
-			<groupId>ch.qos.logback</groupId>
-			<artifactId>logback-classic</artifactId>
-		</dependency>
-		<dependency>
 			<groupId>org.activiti</groupId>
 			<artifactId>activiti5-compatibility</artifactId>
 			<version>6.0.1-SNAPSHOT</version>

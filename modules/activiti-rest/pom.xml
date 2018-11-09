@@ -90,12 +90,6 @@
       <artifactId>activiti-common-rest</artifactId>
     </dependency>
 
-    <!-- Logging, using Logback as SLF4J implementation -->
-    <dependency>
-      <groupId>ch.qos.logback</groupId>
-      <artifactId>logback-classic</artifactId>
-    </dependency>
-
     <dependency>
       <groupId>commons-fileupload</groupId>
       <artifactId>commons-fileupload</artifactId>

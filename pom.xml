@@ -27,7 +27,6 @@
     <jackson.version>2.9.5</jackson.version>
     <jetty.version>9.2.24.v20180105</jetty.version>
     <log4j2.version>2.8.2</log4j2.version>
-    <logback.version>1.2.3</logback.version>
     <mysql.version>5.1.45</mysql.version>
     <mule.version>3.7.0</mule.version>
     <spring.version>4.3.14.RELEASE</spring.version>
@@ -93,21 +92,6 @@
         <version>${log4j2.version}</version>
         <type>pom</type>
         <scope>import</scope>
-      </dependency>
-      <dependency>
-        <groupId>ch.qos.logback</groupId>
-        <artifactId>logback-access</artifactId>
-        <version>${logback.version}</version>
-      </dependency>
-      <dependency>
-        <groupId>ch.qos.logback</groupId>
-        <artifactId>logback-classic</artifactId>
-        <version>${logback.version}</version>
-      </dependency>
-      <dependency>
-        <groupId>ch.qos.logback</groupId>
-        <artifactId>logback-core</artifactId>
-        <version>${logback.version}</version>
       </dependency>
       <dependency>
         <groupId>org.springframework</groupId>
