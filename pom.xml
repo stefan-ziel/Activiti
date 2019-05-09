@@ -10,7 +10,7 @@
   </parent>
   <groupId>org.activiti</groupId>
   <artifactId>activiti-root</artifactId>
-  <version>6.0.1.c-SNAPSHOT</version>
+  <version>6.0.2.c-SNAPSHOT</version>
   <packaging>pom</packaging>
   <name>Activiti</name>
   <description>BPM and workflow engine</description>
@@ -972,19 +972,6 @@
               </execution>
             </executions>
           </plugin>
-          <plugin>
-            <groupId>org.apache.maven.plugins</groupId>
-            <artifactId>maven-gpg-plugin</artifactId>
-            <executions>
-              <execution>
-                <id>sign-artifacts</id>
-                <phase>verify</phase>
-                <goals>
-                  <goal>sign</goal>
-                </goals>
-              </execution>
-            </executions>
-          </plugin>
         </plugins>
       </build>
     </profile>
@@ -1348,7 +1335,7 @@
 		<site>
 			<id>site</id>
 			<name>Interne Webseite für Site Reports</name>
-			<url>dav://subversion/corprepos/site/${project.version}/claninfo/clan-ng/</url>
+			<url>dav://subversion/corprepos/site/${project.version}/org/activiti/</url>
 		</site>
 	</distributionManagement>
 </project>
